@@ -440,7 +440,7 @@ fun VideoGridCard(
                 contentAlignment = Alignment.Center
             ) {
                 AsyncImage(
-                    model = video.uri,
+                    model = com.example.ui.image.VideoThumb(video.uri),
                     contentDescription = video.title,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
@@ -635,7 +635,7 @@ fun VideoRowCard(
                 contentAlignment = Alignment.Center
             ) {
                 AsyncImage(
-                    model = video.uri,
+                    model = com.example.ui.image.VideoThumb(video.uri),
                     contentDescription = video.title,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
@@ -786,7 +786,7 @@ fun ContinueWatchingCard(
                 contentAlignment = Alignment.Center
             ) {
                 AsyncImage(
-                    model = video.uri,
+                    model = com.example.ui.image.VideoThumb(video.uri),
                     contentDescription = video.title,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()

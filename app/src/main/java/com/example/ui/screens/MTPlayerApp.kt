@@ -4,7 +4,10 @@ import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -195,33 +198,27 @@ fun MTPlayerApp(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
+                    .consumeWindowInsets(innerPadding)
             ) {
                 NavHost(
                     navController = navController,
                     startDestination = Screen.Splash.route,
+                    // Fast, lightweight transitions. Top-level tabs fade through; sub-pages
+                    // (Settings / Equalizer) slide a short distance. Pop uses the same short
+                    // timings so back navigation (including predictive back) feels instant.
                     enterTransition = {
-                        fadeIn(animationSpec = tween(220)) + slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                            animationSpec = tween(220)
-                        )
+                        if (isSubRoute(targetState.destination.route)) {
+                            slideInHorizontally(tween(NAV_ANIM_MS, easing = FastOutSlowInEasing)) { it / 6 } +
+                                fadeIn(tween(NAV_ANIM_MS))
+                        } else fadeIn(tween(NAV_ANIM_MS, delayMillis = NAV_FADE_OUT_MS))
                     },
-                    exitTransition = {
-                        fadeOut(animationSpec = tween(220)) + slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                            animationSpec = tween(220)
-                        )
-                    },
-                    popEnterTransition = {
-                        fadeIn(animationSpec = tween(220)) + slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.End,
-                            animationSpec = tween(220)
-                        )
-                    },
+                    exitTransition = { fadeOut(tween(NAV_FADE_OUT_MS)) },
+                    popEnterTransition = { fadeIn(tween(NAV_ANIM_MS)) },
                     popExitTransition = {
-                        fadeOut(animationSpec = tween(220)) + slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.End,
-                            animationSpec = tween(220)
-                        )
+                        if (isSubRoute(initialState.destination.route)) {
+                            slideOutHorizontally(tween(NAV_ANIM_MS, easing = FastOutSlowInEasing)) { it / 6 } +
+                                fadeOut(tween(NAV_FADE_OUT_MS))
+                        } else fadeOut(tween(NAV_FADE_OUT_MS))
                     }
                 ) {
                     composable(Screen.Splash.route) {
@@ -493,3 +490,9 @@ fun MTPlayerApp(
         UpdateHost(enabled = !isSplash && activePlayingVideo == null)
     }
 }
+
+private const val NAV_ANIM_MS = 180
+private const val NAV_FADE_OUT_MS = 90
+
+private fun isSubRoute(route: String?): Boolean =
+    route == Screen.Settings.route || route == Screen.Equalizer.route

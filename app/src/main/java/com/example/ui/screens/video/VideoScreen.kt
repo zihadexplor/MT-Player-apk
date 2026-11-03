@@ -545,7 +545,7 @@ fun VideoScreen(
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                                 verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                items(visibleFolders, key = { it.id }) { folder ->
+                                items(visibleFolders, key = { "vf_${it.id}" }) { folder ->
                                     VideoFolderCard(
                                         folder = folder,
                                         onFolderClick = { onFolderClick(folder) },
@@ -649,7 +649,7 @@ fun VideoListOrGrid(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(videos, key = { it.id }) { video ->
+                items(videos, key = { "v_${it.id}" }) { video ->
                     VideoGridCard(
                         video = video,
                         onVideoClick = { onVideoClick(video) },
@@ -671,7 +671,7 @@ fun VideoListOrGrid(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(videos, key = { it.id }) { video ->
+            items(videos, key = { "v_${it.id}" }) { video ->
                 VideoRowCard(
                     video = video,
                     onVideoClick = { onVideoClick(video) },

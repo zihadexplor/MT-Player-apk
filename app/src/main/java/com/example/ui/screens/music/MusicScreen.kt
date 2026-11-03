@@ -325,7 +325,7 @@ fun MusicScreen(
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        items(currentTrackList, key = { it.id }) { track ->
+                        items(currentTrackList, key = { "t_${it.id}" }) { track ->
                             TrackItemRow(
                                 track = track,
                                 isSelected = currentPlayingTrack?.id == track.id,
@@ -365,7 +365,7 @@ fun MusicScreen(
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        items(albums, key = { it.id }) { album ->
+                        items(albums, key = { "al_${it.id}_${it.name}" }) { album ->
                             val isExpanded = expandedAlbumId == album.id
                             Card(
                                 modifier = Modifier
@@ -497,7 +497,7 @@ fun MusicScreen(
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        items(artists, key = { it.name }) { artist ->
+                        items(artists, key = { "ar_${it.name}" }) { artist ->
                             val isExpanded = expandedArtistName == artist.name
                             Card(
                                 modifier = Modifier
@@ -618,7 +618,7 @@ fun MusicScreen(
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        items(folders, key = { it.name }) { folder ->
+                        items(folders, key = { "f_${it.path}_${it.name}" }) { folder ->
                             val isExpanded = expandedFolderPath == folder.name
                             Card(
                                 modifier = Modifier
