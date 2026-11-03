@@ -82,7 +82,7 @@ jobs:
           MT_KEY_ALIAS: ${{ secrets.MT_KEY_ALIAS }}
           MT_KEY_PASSWORD: ${{ secrets.MT_KEY_PASSWORD }}
           MT_UPDATER_TOKEN: ${{ secrets.MT_UPDATER_TOKEN }}
-        run: ./gradlew --no-configuration-cache assembleRelease testReleaseUnitTest
+        run: ./gradlew --no-configuration-cache assembleRelease testDebugUnitTest
 
       - name: Verify signature & rename APK
         id: apk
