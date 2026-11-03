@@ -47,6 +47,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
       - name: Validate Gradle wrapper
         uses: gradle/actions/wrapper-validation@v4
 
@@ -111,8 +116,6 @@ jobs:
         id: commit
         if: steps.version.outputs.changed == 'true'
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add version.properties
           git commit -m "chore(release): v${{ steps.version.outputs.version_name }} [skip ci]"
           # Best effort: if main moved meanwhile, the tag still points at this commit and the
