@@ -53,6 +53,7 @@ import com.example.ui.screens.video.VideoPlayerModal
 import com.example.ui.screens.video.VideoScreen
 import com.example.ui.theme.DarkBackground
 import com.example.ui.viewmodel.MainViewModel
+import com.example.update.ui.UpdateHost
 
 @Composable
 fun MTPlayerApp(
@@ -487,5 +488,8 @@ fun MTPlayerApp(
                 onProgressUpdate = viewModel::updateVideoPlaybackProgress
             )
         }
+
+        // In-app updater popup (GitHub Releases). Hidden during splash and fullscreen video.
+        UpdateHost(enabled = !isSplash && activePlayingVideo == null)
     }
 }
