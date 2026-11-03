@@ -270,7 +270,7 @@ fun HomeScreen(
                     )
                 }
             } else {
-                items(allTracks.take(5), key = { it.id }) { track ->
+                items(allTracks.take(5), key = { "track_${it.id}" }) { track ->
                     TrackItemRow(
                         track = track,
                         isSelected = selectedTrack?.id == track.id,
@@ -334,7 +334,7 @@ fun HomeScreen(
                     }
                 }
             } else {
-                items(recentVideos.take(2), key = { it.id }) { video ->
+                items(recentVideos.take(2), key = { "video_${it.id}" }) { video ->
                     VideoGridCard(
                         video = video,
                         onVideoClick = { onVideoClick(video) }

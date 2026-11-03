@@ -178,7 +178,7 @@ class OfflineMediaRepository(
     )
     override val playlists = _playlists.asStateFlow()
 
-    private val favoriteIds = mutableSetOf<String>()
+    private val favoriteIds: MutableSet<String> = java.util.Collections.synchronizedSet(mutableSetOf())
     private val _recentlyPlayedIds = MutableStateFlow<List<String>>(emptyList())
     private val _playCounts = MutableStateFlow<Map<String, Int>>(emptyMap())
 
@@ -294,6 +294,10 @@ class OfflineMediaRepository(
                         }
                     }
 
+                    if (folderPath.isBlank() && dataCol >= 0 && !cursor.isNull(dataCol)) {
+                        folderPath = File(cursor.getString(dataCol) ?: "").parentFile?.absolutePath ?: ""
+                    }
+
                     val contentUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
                     val albumArtUri = if (albumId > 0) {
                         ContentUris.withAppendedId(Uri.parse("content://media/external/audio/albumart"), albumId).toString()
@@ -325,13 +329,15 @@ class OfflineMediaRepository(
                 }
             }
 
-            // Grouping: Albums, Artists, Folders
-            val groupedAlbums = scannedAudio.groupBy { it.albumId to it.album }
+            // Grouping: Albums, Artists, Folders (ids must be unique for list keys)
+            val uniqueAudio = scannedAudio.distinctBy { it.id }
+            scannedAudio.clear(); scannedAudio.addAll(uniqueAudio)
+            val groupedAlbums = scannedAudio.groupBy { it.albumId to it.album.trim().lowercase() }
                 .map { (key, tracks) ->
-                    val (albumId, albumName) = key
+                    val (albumId, _) = key
                     Album(
                         id = albumId,
-                        name = albumName,
+                        name = tracks.first().album,
                         artist = tracks.firstOrNull()?.artist ?: "Various Artists",
                         trackCount = tracks.size,
                         albumArtUri = tracks.firstOrNull { it.albumArtUri != null }?.albumArtUri,
@@ -349,8 +355,9 @@ class OfflineMediaRepository(
                     )
                 }.sortedBy { it.name.lowercase() }
 
-            val groupedFolders = scannedAudio.groupBy { it.folderName }
-                .map { (folderName, tracks) ->
+            val groupedFolders = scannedAudio.groupBy { it.folderPath.ifBlank { it.folderName } }
+                .map { (_, tracks) ->
+                    val folderName = tracks.first().folderName
                     MusicFolder(
                         name = folderName,
                         path = tracks.firstOrNull()?.folderPath ?: "",
@@ -480,8 +487,8 @@ class OfflineMediaRepository(
         val totalDuration = scannedAudio.sumOf { it.durationMs }
         val totalSize = scannedAudio.sumOf { it.sizeBytes } + scannedVideos.sumOf { it.sizeBytes }
 
-        _audioTracks.value = scannedAudio
-        _allScannedVideos.value = scannedVideos
+        _audioTracks.value = scannedAudio.distinctBy { it.id }
+        _allScannedVideos.value = scannedVideos.distinctBy { it.id }
         val hiddenSet = _hiddenFolderPaths.value
         val visibleVideoCount = scannedVideos.count { !hiddenSet.contains(it.folderPath) && !hiddenSet.contains(it.folderName) }
         _storageStats.value = _storageStats.value.copy(
