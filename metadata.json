@@ -1,0 +1,6 @@
+{
+  "name": "MT Player",
+  "description": "Offline music and video player with premium Spotify-inspired dark interface.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
