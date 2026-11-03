@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -58,7 +59,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.BuildConfig
 import com.example.ui.theme.DarkBackground
+import com.example.update.ui.UpdateSettingsCard
 import com.example.ui.theme.DarkOutline
 import com.example.ui.theme.DarkOutlineVariant
 import com.example.ui.theme.DarkSurface
@@ -283,6 +286,13 @@ fun SettingsScreen(
                 }
             }
 
+            // App Updates (GitHub Releases updater)
+            item {
+                SettingsSectionHeader(title = "App Updates", icon = Icons.Default.SystemUpdate)
+                Spacer(modifier = Modifier.height(8.dp))
+                UpdateSettingsCard()
+            }
+
             // About & System Info
             item {
                 SettingsSectionHeader(title = "About & Privacy", icon = Icons.Default.Info)
@@ -318,7 +328,7 @@ fun SettingsScreen(
                                     color = TextPrimary
                                 )
                                 Text(
-                                    text = "Version 1.0.0 (Phase 1 Foundation)",
+                                    text = "Version ${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE})",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = TextSecondary
                                 )

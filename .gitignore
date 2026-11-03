@@ -1,18 +1,25 @@
-*.iml
-.gradle
-.kotlin
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
+# Gradle / Kotlin
+.gradle/
+.kotlin/
+build/
 /captures
 .externalNativeBuild
 .cxx
+
+# IDE
+*.iml
+.idea/
+.DS_Store
+
+# Local config
 local.properties
 .env
-debug.keystore
+
+# Signing — NEVER commit keystores or their passwords
+keystore.properties
+*.jks
+*.keystore
+*.p12
+
+# Release staging
+dist/

@@ -2,17 +2,38 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Permissions for Offline Music & Video Player -->
+    <!--
+        Permissions — each one is required by a concrete feature. Nothing else is requested.
+    -->
+
+    <!-- Read local music / videos (Android 13+ granular media permissions) -->
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <!-- Read local media on Android 9 – 12 only -->
     <uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
+
+    <!-- Media playback notification + "update ready" notification (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Background audio playback via Media3 MediaSessionService -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+
+    <!-- Equalizer, bass boost and virtualizer audio effects -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
+    <!-- In-app updater: talk to GitHub Releases and hand the verified APK to the system installer -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <!-- Declared by Media3 for streaming bandwidth estimation. MT Player only plays local files,
+         and Media3 handles its absence gracefully, so it is removed from the merged manifest. -->
+    <uses-permission
+        android:name="android.permission.ACCESS_NETWORK_STATE"
+        tools:node="remove" />
 
     <application
         android:allowBackup="true"
@@ -22,7 +43,9 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.MyApplication">
+        android:usesCleartextTraffic="false"
+        android:theme="@style/Theme.MyApplication"
+        tools:targetApi="37">
 
         <activity
             android:name=".MainActivity"
@@ -38,7 +61,8 @@
             </intent-filter>
         </activity>
 
-        <!-- MediaSessionService for background audio playback and system media notifications -->
+        <!-- MediaSessionService for background audio playback and system media notifications.
+             Exported so system UI / Bluetooth / Android Auto media controllers can connect. -->
         <service
             android:name=".service.PlaybackService"
             android:foregroundServiceType="mediaPlayback"
@@ -48,6 +72,21 @@
                 <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>
         </service>
+
+        <!-- Updater: DownloadManager completion. Must be exported because the broadcast comes from
+             the system DownloadProvider; the payload is validated against our own download id. -->
+        <receiver
+            android:name=".update.DownloadCompleteReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.DOWNLOAD_COMPLETE" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Updater: PackageInstaller session result (explicit PendingIntent, not exported). -->
+        <receiver
+            android:name=".update.InstallResultReceiver"
+            android:exported="false" />
 
     </application>
 
