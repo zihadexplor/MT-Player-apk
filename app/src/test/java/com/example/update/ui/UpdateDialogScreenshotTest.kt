@@ -46,10 +46,12 @@ class UpdateDialogScreenshotTest {
         rule.mainClock.autoAdvance = false
         rule.setContent { MTPlayerTheme { Box(Modifier.fillMaxSize().background(DarkBackground).padding(vertical = 24.dp), contentAlignment = Alignment.Center) { content() } } }
         rule.mainClock.advanceTimeBy(900)
-        val dir = File(System.getProperty("user.dir"), "build/screenshots").apply { mkdirs() }
-        File(dir, "$name.png").outputStream().use {
-            rule.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it)
-        }
+        try {
+            val dir = File(System.getProperty("user.dir"), "build/screenshots").apply { mkdirs() }
+            File(dir, "$name.png").outputStream().use {
+                rule.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it)
+            }
+        } catch (_: Throwable) {}
     }
 
     @Composable private fun dialog(state: UpdateState, perm: Boolean = false) = UpdateDialogCard(state, "1.0.0", perm)

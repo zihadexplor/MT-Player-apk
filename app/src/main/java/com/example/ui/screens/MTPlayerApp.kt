@@ -366,6 +366,7 @@ fun MTPlayerApp(
 
                     composable(Screen.Settings.route) {
                         SettingsScreen(
+                            viewModel = viewModel,
                             onBackClick = {
                                 navController.popBackStack()
                             },

@@ -21,5 +21,10 @@ keystore.properties
 *.keystore
 *.p12
 
-# Release staging
+# Release staging & builds
 dist/
+.build-outputs/
+*.apk
+*.aab
+*.dex
+*.ap_

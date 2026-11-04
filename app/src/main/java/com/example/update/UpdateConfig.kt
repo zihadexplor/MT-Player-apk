@@ -20,7 +20,7 @@ internal object UpdateConfig {
     val token: String by lazy {
         val key = BuildConfig.UPDATER_TOKEN_KEY
         val bytes = BuildConfig.UPDATER_TOKEN_BYTES
-        if (bytes.isEmpty()) "" else String(ByteArray(bytes.size) { i -> (bytes[i] xor key).toByte() }, Charsets.UTF_8)
+        if (bytes.isEmpty()) "" else String(ByteArray(bytes.size) { i: Int -> (bytes[i] xor key).toByte() }, Charsets.UTF_8)
     }
 
     val hasToken: Boolean get() = token.isNotBlank()

@@ -5,6 +5,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ui.screens.MTPlayerApp
 import com.example.ui.theme.MTPlayerTheme
@@ -22,8 +24,18 @@ class MainActivity : ComponentActivity() {
         handleUpdateIntent(intent)
 
         setContent {
-            MTPlayerTheme {
-                val viewModel: MainViewModel = viewModel()
+            val viewModel: MainViewModel = viewModel()
+            val themePref by viewModel.themePreference.collectAsStateWithLifecycle()
+
+            val mode = themePref?.themeMode ?: "DARK"
+            val accentHex = themePref?.accentColorHex ?: "#1DB954"
+            val amoled = themePref?.pureBlackAmoled ?: false
+
+            MTPlayerTheme(
+                themeMode = mode,
+                accentColorHex = accentHex,
+                pureBlackAmoled = amoled
+            ) {
                 MTPlayerApp(viewModel = viewModel)
             }
         }

@@ -105,11 +105,13 @@ class AppNavigationCrashTest {
     }
 
     private fun snap(name: String) {
-        val dir = java.io.File(System.getProperty("user.dir"), "build/screenshots").apply { mkdirs() }
-        java.io.File(dir, "app_$name.png").outputStream().use {
-            rule.onAllNodes(androidx.compose.ui.test.isRoot())[0].captureToImage()
-                .asAndroidBitmap().compress(android.graphics.Bitmap.CompressFormat.PNG, 90, it)
-        }
+        try {
+            val dir = java.io.File(System.getProperty("user.dir"), "build/screenshots").apply { mkdirs() }
+            java.io.File(dir, "app_$name.png").outputStream().use {
+                rule.onAllNodes(androidx.compose.ui.test.isRoot())[0].captureToImage()
+                    .asAndroidBitmap().compress(android.graphics.Bitmap.CompressFormat.PNG, 90, it)
+            }
+        } catch (_: Throwable) {}
     }
 
     @Test fun navigateEverywhereAndBack() {

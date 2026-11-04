@@ -171,9 +171,10 @@ fun SplashScreen(
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = "100% Offline • Private & Fast",
+                text = "100% Offline • Created by TOWFIK ESTIAK ZIHAD",
                 style = MaterialTheme.typography.bodySmall,
-                color = TextTertiary
+                color = TextSecondary,
+                fontSize = 11.sp
             )
         }
     }

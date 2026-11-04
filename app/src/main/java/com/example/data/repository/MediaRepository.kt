@@ -7,6 +7,17 @@ import android.database.Cursor
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
+import com.example.data.database.EqualizerPreferenceEntity
+import com.example.data.database.FavoriteSongEntity
+import com.example.data.database.FavoriteVideoEntity
+import com.example.data.database.HiddenFolderEntity
+import com.example.data.database.LastMusicPlaybackEntity
+import com.example.data.database.LastVideoPlaybackEntity
+import com.example.data.database.MTPlayerDatabase
+import com.example.data.database.PlaylistEntity
+import com.example.data.database.PlaylistSongCrossRef
+import com.example.data.database.SleepTimerPreferenceEntity
+import com.example.data.database.ThemePreferenceEntity
 import com.example.data.model.Album
 import com.example.data.model.Artist
 import com.example.data.model.AudioTrack
@@ -16,14 +27,18 @@ import com.example.data.model.Playlist
 import com.example.data.model.StorageStats
 import com.example.data.model.VideoFolder
 import com.example.data.model.VideoItem
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.UUID
 
 interface MediaRepository {
     val storageStats: Flow<StorageStats>
@@ -45,6 +60,13 @@ interface MediaRepository {
     val continueWatchingVideos: Flow<List<VideoItem>>
     val favoriteVideos: Flow<List<VideoItem>>
 
+    // Room Database Phase 10 flows
+    val lastMusicPlayback: Flow<LastMusicPlaybackEntity?>
+    val lastVideoPlaybackPositions: Flow<List<LastVideoPlaybackEntity>>
+    val equalizerPreference: Flow<EqualizerPreferenceEntity?>
+    val themePreference: Flow<ThemePreferenceEntity?>
+    val sleepTimerPreference: Flow<SleepTimerPreferenceEntity?>
+
     suspend fun scanDeviceMedia()
     suspend fun toggleFavorite(trackId: String)
     suspend fun addFavorites(trackIds: List<String>)
@@ -64,51 +86,165 @@ interface MediaRepository {
     suspend fun unhideAllVideoFolders()
     suspend fun updateVideoProgress(videoId: String, positionMs: Long, durationMs: Long)
     suspend fun clearVideoProgress(videoId: String)
+
+    // Room Database preferences & playback actions
+    suspend fun saveMusicPlaybackPosition(songId: String, positionMs: Long, durationMs: Long)
+    suspend fun saveEqualizerPreference(isEnabled: Boolean, presetName: String, bassBoost: Int, virtualizer: Int, bandLevelsCsv: String)
+    suspend fun saveThemePreference(themeMode: String, accentColorHex: String, pureBlackAmoled: Boolean)
+    suspend fun saveSleepTimerPreference(durationMinutes: Int, finishLastSong: Boolean, fadeOutEnabled: Boolean)
+    suspend fun clearListeningHistory()
+    suspend fun clearWatchingHistory()
 }
 
 class OfflineMediaRepository(
     private val context: Context
 ) : MediaRepository {
 
+    private val database = MTPlayerDatabase.getInstance(context)
+    private val dao = database.mediaDao()
+
     private val _storageStats = MutableStateFlow(StorageStats())
     override val storageStats = _storageStats.asStateFlow()
 
-    private val _audioTracks = MutableStateFlow<List<AudioTrack>>(emptyList())
-    override val audioTracks = _audioTracks.asStateFlow()
-
-    private val _albums = MutableStateFlow<List<Album>>(emptyList())
-    override val albums = _albums.asStateFlow()
-
-    private val _artists = MutableStateFlow<List<Artist>>(emptyList())
-    override val artists = _artists.asStateFlow()
-
-    private val _musicFolders = MutableStateFlow<List<MusicFolder>>(emptyList())
-    override val musicFolders = _musicFolders.asStateFlow()
-
-    private val videoPrefs = context.getSharedPreferences("mt_player_video_prefs", Context.MODE_PRIVATE)
-
-    private val _favoriteVideoIds = MutableStateFlow<Set<String>>(
-        videoPrefs.getStringSet("favorite_video_ids", emptySet())?.toSet() ?: emptySet()
-    )
-    override val favoriteVideoIds = _favoriteVideoIds.asStateFlow()
-
-    private val _hiddenFolderPaths = MutableStateFlow<Set<String>>(
-        videoPrefs.getStringSet("hidden_video_folders", emptySet())?.toSet() ?: emptySet()
-    )
-    override val hiddenVideoFolderPaths = _hiddenFolderPaths.asStateFlow()
-
-    private val _videoProgress = MutableStateFlow<Map<String, Long>>(loadVideoProgress())
-    private val _videoLastWatched = MutableStateFlow<Map<String, Long>>(loadVideoLastWatched())
-
+    private val _rawAudioTracks = MutableStateFlow<List<AudioTrack>>(emptyList())
     private val _allScannedVideos = MutableStateFlow<List<VideoItem>>(emptyList())
 
+    // 1. Favorite Song IDs from Room
+    private val favoriteSongIdsFlow: Flow<Set<String>> = dao.getAllFavoriteSongIds().map { it.toSet() }
+
+    // 2. Favorite Video IDs from Room
+    override val favoriteVideoIds: Flow<Set<String>> = dao.getAllFavoriteVideoIds().map { it.toSet() }
+
+    // 11. Hidden Folders from Room
+    override val hiddenVideoFolderPaths: Flow<Set<String>> = dao.getAllHiddenFolders().map { list ->
+        list.map { it.folderPath }.toSet()
+    }
+
+    // 9, 10, 12. Preferences from Room
+    override val lastMusicPlayback: Flow<LastMusicPlaybackEntity?> = dao.getLastMusicPlaybackPosition()
+    override val lastVideoPlaybackPositions: Flow<List<LastVideoPlaybackEntity>> = dao.getAllVideoPlaybackPositions()
+    override val equalizerPreference: Flow<EqualizerPreferenceEntity?> = dao.getEqualizerPreference()
+    override val themePreference: Flow<ThemePreferenceEntity?> = dao.getThemePreference()
+    override val sleepTimerPreference: Flow<SleepTimerPreferenceEntity?> = dao.getSleepTimerPreference()
+
+    // Audio tracks mapped with Room favorite status and play counts
+    override val audioTracks: Flow<List<AudioTrack>> = combine(
+        _rawAudioTracks,
+        favoriteSongIdsFlow,
+        dao.getAllListeningHistory()
+    ) { rawTracks, favIds, historyList ->
+        val countMap = historyList.associate { it.songId to it.playCount }
+        rawTracks.map { track ->
+            track.copy(
+                isFavorite = favIds.contains(track.id),
+                playCount = countMap[track.id] ?: 0
+            )
+        }
+    }
+
+    override val albums: Flow<List<Album>> = audioTracks.map { tracks ->
+        tracks.groupBy { it.albumId }
+            .map { (albumId, tracksInAlbum) ->
+                val first = tracksInAlbum.first()
+                Album(
+                    id = albumId,
+                    name = first.album,
+                    artist = first.artist,
+                    trackCount = tracksInAlbum.size,
+                    albumArtUri = first.albumArtUri,
+                    tracks = tracksInAlbum
+                )
+            }.sortedBy { it.name.lowercase() }
+    }
+
+    override val artists: Flow<List<Artist>> = audioTracks.map { tracks ->
+        tracks.groupBy { it.artist.lowercase() }
+            .map { (_, tracksOfArtist) ->
+                val first = tracksOfArtist.first()
+                val albumCount = tracksOfArtist.map { it.albumId }.distinct().size
+                Artist(
+                    name = first.artist,
+                    trackCount = tracksOfArtist.size,
+                    albumCount = albumCount,
+                    tracks = tracksOfArtist
+                )
+            }.sortedBy { it.name.lowercase() }
+    }
+
+    override val musicFolders: Flow<List<MusicFolder>> = audioTracks.map { tracks ->
+        tracks.groupBy { if (it.folderPath.isNotBlank()) it.folderPath else it.folderName }
+            .map { (pathKey, tracksInFolder) ->
+                val folderName = tracksInFolder.firstOrNull()?.folderName ?: "Music"
+                MusicFolder(
+                    name = folderName,
+                    path = pathKey,
+                    trackCount = tracksInFolder.size,
+                    tracks = tracksInFolder
+                )
+            }.sortedBy { it.name.lowercase() }
+    }
+
+    // 3. Custom Playlists & 4. Playlist Song Relationships from Room
+    override val playlists: Flow<List<Playlist>> = combine(
+        dao.getAllPlaylists(),
+        dao.getAllPlaylistSongCrossRefs(),
+        favoriteSongIdsFlow
+    ) { playlistEntities, refs, favIds ->
+        val refsByPlaylist = refs.groupBy { it.playlistId }
+
+        val dbPlaylists = playlistEntities.map { entity ->
+            val trackIds = if (entity.id == "favorites_default") {
+                favIds.toList()
+            } else {
+                refsByPlaylist[entity.id]
+                    ?.sortedBy { it.orderIndex }
+                    ?.map { it.songId } ?: emptyList()
+            }
+            Playlist(
+                id = entity.id,
+                name = entity.name,
+                trackIds = trackIds,
+                createdAt = entity.createdAt
+            )
+        }
+
+        if (dbPlaylists.none { it.id == "favorites_default" }) {
+            listOf(Playlist(id = "favorites_default", name = "Favorite Tracks", trackIds = favIds.toList())) + dbPlaylists
+        } else {
+            dbPlaylists
+        }
+    }
+
+    // 5. Listening History & Most Played from Room
+    override val recentlyPlayedTracks: Flow<List<AudioTrack>> = combine(
+        audioTracks,
+        dao.getAllListeningHistory()
+    ) { tracks, historyList ->
+        val trackMap = tracks.associateBy { it.id }
+        historyList
+            .sortedByDescending { it.playedAt }
+            .mapNotNull { trackMap[it.songId] }
+    }
+
+    override val mostPlayedTracks: Flow<List<AudioTrack>> = combine(
+        audioTracks,
+        dao.getAllListeningHistory()
+    ) { tracks, historyList ->
+        val countMap = historyList.associate { it.songId to it.playCount }
+        tracks.filter { (countMap[it.id] ?: 0) > 0 }
+            .sortedByDescending { countMap[it.id] ?: 0 }
+    }
+
+    // 6. Video Watching History, 8. Video Progress & 11. Hidden Folders
     override val videoItems: Flow<List<VideoItem>> = combine(
         _allScannedVideos,
-        _hiddenFolderPaths,
-        _favoriteVideoIds,
-        _videoProgress,
-        _videoLastWatched
-    ) { allVideos, hiddenFolders, favIds, progressMap, watchedMap ->
+        hiddenVideoFolderPaths,
+        favoriteVideoIds,
+        dao.getAllVideoPlaybackPositions(),
+        dao.getAllVideoWatchingHistory()
+    ) { allVideos, hiddenFolders, favIds, positions, watchHistory ->
+        val progressMap = positions.associate { it.videoId to it.positionMs }
+        val watchMap = watchHistory.associate { it.videoId to it.watchedAt }
         allVideos
             .filter { video ->
                 !hiddenFolders.contains(video.folderPath) && !hiddenFolders.contains(video.folderName)
@@ -117,26 +253,16 @@ class OfflineMediaRepository(
                 video.copy(
                     isFavorite = favIds.contains(video.id),
                     playbackPositionMs = progressMap[video.id] ?: 0L,
-                    lastWatchedTimestamp = watchedMap[video.id] ?: 0L
+                    lastWatchedTimestamp = watchMap[video.id] ?: 0L
                 )
             }
     }
 
     override val videoFolders: Flow<List<VideoFolder>> = combine(
-        _allScannedVideos,
-        _hiddenFolderPaths,
-        _favoriteVideoIds,
-        _videoProgress,
-        _videoLastWatched
-    ) { allVideos, hiddenFolders, favIds, progressMap, watchedMap ->
-        val mappedVideos = allVideos.map { video ->
-            video.copy(
-                isFavorite = favIds.contains(video.id),
-                playbackPositionMs = progressMap[video.id] ?: 0L,
-                lastWatchedTimestamp = watchedMap[video.id] ?: 0L
-            )
-        }
-        mappedVideos.groupBy { if (it.folderPath.isNotBlank()) it.folderPath else it.folderName }
+        videoItems,
+        hiddenVideoFolderPaths
+    ) { videos, hiddenFolders ->
+        videos.groupBy { if (it.folderPath.isNotBlank()) it.folderPath else it.folderName }
             .map { (pathKey, videosInFolder) ->
                 val folderName = videosInFolder.firstOrNull()?.folderName ?: "Videos"
                 val isHidden = hiddenFolders.contains(pathKey) || hiddenFolders.contains(folderName)
@@ -166,36 +292,67 @@ class OfflineMediaRepository(
         videos.filter { it.isFavorite }
     }
 
-    private val _folders = MutableStateFlow<List<MediaFolder>>(emptyList())
-    override val folders = _folders.asStateFlow()
-
-    private val _playlists = MutableStateFlow<List<Playlist>>(
-        listOf(
-            Playlist(id = "favorites_default", name = "Favorite Tracks", trackIds = emptyList()),
-            Playlist(id = "workout_mix", name = "Workout Energy", trackIds = emptyList()),
-            Playlist(id = "chill_vibes", name = "Late Night Chill", trackIds = emptyList())
-        )
-    )
-    override val playlists = _playlists.asStateFlow()
-
-    private val favoriteIds: MutableSet<String> = java.util.Collections.synchronizedSet(mutableSetOf())
-    private val _recentlyPlayedIds = MutableStateFlow<List<String>>(emptyList())
-    private val _playCounts = MutableStateFlow<Map<String, Int>>(emptyMap())
-
-    override val recentlyPlayedTracks: Flow<List<AudioTrack>> = combine(
-        _audioTracks,
-        _recentlyPlayedIds
-    ) { tracks, recentIds ->
-        val trackMap = tracks.associateBy { it.id }
-        recentIds.mapNotNull { trackMap[it] }
+    override val folders: Flow<List<MediaFolder>> = combine(musicFolders, videoFolders) { musicF, videoF ->
+        val map = mutableMapOf<String, MediaFolder>()
+        musicF.forEach { mf ->
+            map[mf.path] = MediaFolder(
+                id = mf.path,
+                name = mf.name,
+                path = mf.path,
+                trackCount = mf.trackCount,
+                videoCount = 0
+            )
+        }
+        videoF.forEach { vf ->
+            val existing = map[vf.path]
+            if (existing != null) {
+                map[vf.path] = existing.copy(videoCount = vf.videoCount)
+            } else {
+                map[vf.path] = MediaFolder(
+                    id = vf.path,
+                    name = vf.name,
+                    path = vf.path,
+                    trackCount = 0,
+                    videoCount = vf.videoCount
+                )
+            }
+        }
+        map.values.sortedBy { it.name.lowercase() }
     }
 
-    override val mostPlayedTracks: Flow<List<AudioTrack>> = combine(
-        _audioTracks,
-        _playCounts
-    ) { tracks, counts ->
-        tracks.filter { (counts[it.id] ?: 0) > 0 }
-            .sortedByDescending { counts[it.id] ?: 0 }
+    init {
+        // Migrate legacy SharedPreferences to Room if present
+        CoroutineScope(Dispatchers.IO).launch {
+            migrateLegacyPrefsToRoom()
+        }
+    }
+
+    private suspend fun migrateLegacyPrefsToRoom() {
+        try {
+            val videoPrefs = context.getSharedPreferences("mt_player_video_prefs", Context.MODE_PRIVATE)
+            val favVideoIds = videoPrefs.getStringSet("favorite_video_ids", null)
+            if (!favVideoIds.isNullOrEmpty()) {
+                dao.insertFavoriteVideos(favVideoIds.map { FavoriteVideoEntity(it) })
+            }
+            val hiddenFolders = videoPrefs.getStringSet("hidden_video_folders", null)
+            if (!hiddenFolders.isNullOrEmpty()) {
+                hiddenFolders.forEach { path ->
+                    dao.insertHiddenFolder(HiddenFolderEntity(folderPath = path, mediaType = "VIDEO"))
+                }
+            }
+
+            // Ensure starter playlists exist
+            val existingPlaylists = dao.getAllPlaylistsDirect()
+            if (existingPlaylists.isEmpty()) {
+                dao.insertPlaylists(
+                    listOf(
+                        PlaylistEntity(id = "favorites_default", name = "Favorite Tracks"),
+                        PlaylistEntity(id = "workout_mix", name = "Workout Energy"),
+                        PlaylistEntity(id = "chill_vibes", name = "Late Night Chill")
+                    )
+                )
+            }
+        } catch (_: Exception) {}
     }
 
     override fun updatePermissionStatus(granted: Boolean, permanentlyDenied: Boolean) {
@@ -214,7 +371,7 @@ class OfflineMediaRepository(
         try {
             val resolver: ContentResolver = context.contentResolver
 
-            // Query Audio from MediaStore
+            // 1. Audio MediaStore Query
             val audioUri: Uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
             } else {
@@ -298,413 +455,348 @@ class OfflineMediaRepository(
                         folderPath = File(cursor.getString(dataCol) ?: "").parentFile?.absolutePath ?: ""
                     }
 
-                    val contentUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
-                    val albumArtUri = if (albumId > 0) {
-                        ContentUris.withAppendedId(Uri.parse("content://media/external/audio/albumart"), albumId).toString()
-                    } else null
-
-                    val cleanArtist = if (artist.contains("<unknown>", ignoreCase = true)) "Unknown Artist" else artist
-                    val cleanAlbum = if (album.contains("<unknown>", ignoreCase = true)) "Unknown Album" else album
-                    val isFav = favoriteIds.contains(id.toString())
-                    val playCount = _playCounts.value[id.toString()] ?: 0
+                    val trackUri = ContentUris.withAppendedId(audioUri, id).toString()
+                    val albumArtUri = ContentUris.withAppendedId(
+                        Uri.parse("content://media/external/audio/albumart"),
+                        albumId
+                    ).toString()
 
                     scannedAudio.add(
                         AudioTrack(
                             id = id.toString(),
                             title = title,
-                            artist = cleanArtist,
-                            album = cleanAlbum,
+                            artist = artist,
+                            album = album,
                             durationMs = duration,
-                            uri = contentUri.toString(),
+                            uri = trackUri,
                             albumArtUri = albumArtUri,
                             albumId = albumId,
                             sizeBytes = size,
-                            isFavorite = isFav,
                             folderName = folderName,
                             folderPath = folderPath,
                             dateAdded = dateAdded,
-                            playCount = playCount
+                            isFavorite = false,
+                            playCount = 0
                         )
                     )
                 }
             }
 
-            // Grouping: Albums, Artists, Folders (ids must be unique for list keys)
-            val uniqueAudio = scannedAudio.distinctBy { it.id }
-            scannedAudio.clear(); scannedAudio.addAll(uniqueAudio)
-            val groupedAlbums = scannedAudio.groupBy { it.albumId to it.album.trim().lowercase() }
-                .map { (key, tracks) ->
-                    val (albumId, _) = key
-                    Album(
-                        id = albumId,
-                        name = tracks.first().album,
-                        artist = tracks.firstOrNull()?.artist ?: "Various Artists",
-                        trackCount = tracks.size,
-                        albumArtUri = tracks.firstOrNull { it.albumArtUri != null }?.albumArtUri,
-                        tracks = tracks
-                    )
-                }.sortedBy { it.name.lowercase() }
-
-            val groupedArtists = scannedAudio.groupBy { it.artist }
-                .map { (artistName, tracks) ->
-                    Artist(
-                        name = artistName,
-                        trackCount = tracks.size,
-                        albumCount = tracks.map { it.album }.distinct().size,
-                        tracks = tracks
-                    )
-                }.sortedBy { it.name.lowercase() }
-
-            val groupedFolders = scannedAudio.groupBy { it.folderPath.ifBlank { it.folderName } }
-                .map { (_, tracks) ->
-                    val folderName = tracks.first().folderName
-                    MusicFolder(
-                        name = folderName,
-                        path = tracks.firstOrNull()?.folderPath ?: "",
-                        trackCount = tracks.size,
-                        tracks = tracks
-                    )
-                }.sortedBy { it.name.lowercase() }
-
-            _albums.value = groupedAlbums
-            _artists.value = groupedArtists
-            _musicFolders.value = groupedFolders
-
-            // Query Videos from MediaStore
+            // 2. Video MediaStore Query
             val videoUri: Uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
             } else {
                 MediaStore.Video.Media.EXTERNAL_CONTENT_URI
             }
 
-            val videoProjectionList = mutableListOf(
+            val videoProjection = mutableListOf(
                 MediaStore.Video.Media._ID,
                 MediaStore.Video.Media.TITLE,
                 MediaStore.Video.Media.DURATION,
                 MediaStore.Video.Media.SIZE,
                 MediaStore.Video.Media.DATE_ADDED,
-                MediaStore.Video.Media.DATA
-            )
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                videoProjectionList.add(MediaStore.Video.Media.BUCKET_DISPLAY_NAME)
-                videoProjectionList.add(MediaStore.Video.Media.RELATIVE_PATH)
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-                videoProjectionList.add(MediaStore.Video.Media.WIDTH)
-                videoProjectionList.add(MediaStore.Video.Media.HEIGHT)
-            }
+                MediaStore.Video.Media.WIDTH,
+                MediaStore.Video.Media.HEIGHT
+            ).apply {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    add(MediaStore.Video.Media.RELATIVE_PATH)
+                    add(MediaStore.Video.Media.BUCKET_DISPLAY_NAME)
+                }
+                add(MediaStore.Video.Media.DATA)
+            }.toTypedArray()
 
             val videoCursor: Cursor? = resolver.query(
                 videoUri,
-                videoProjectionList.toTypedArray(),
+                videoProjection,
                 null,
                 null,
                 "${MediaStore.Video.Media.DATE_ADDED} DESC"
             )
 
             videoCursor?.use { cursor ->
-                val idCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID)
+                val idCol = cursor.getColumnIndex(MediaStore.Video.Media._ID)
                 val titleCol = cursor.getColumnIndex(MediaStore.Video.Media.TITLE)
                 val durationCol = cursor.getColumnIndex(MediaStore.Video.Media.DURATION)
                 val sizeCol = cursor.getColumnIndex(MediaStore.Video.Media.SIZE)
-                val dateCol = cursor.getColumnIndex(MediaStore.Video.Media.DATE_ADDED)
-                val dataCol = cursor.getColumnIndex(MediaStore.Video.Media.DATA)
+                val dateAddedCol = cursor.getColumnIndex(MediaStore.Video.Media.DATE_ADDED)
                 val widthCol = cursor.getColumnIndex(MediaStore.Video.Media.WIDTH)
                 val heightCol = cursor.getColumnIndex(MediaStore.Video.Media.HEIGHT)
-                val bucketCol = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    cursor.getColumnIndex(MediaStore.Video.Media.BUCKET_DISPLAY_NAME)
-                } else -1
+                val dataCol = cursor.getColumnIndex(MediaStore.Video.Media.DATA)
                 val relPathCol = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     cursor.getColumnIndex(MediaStore.Video.Media.RELATIVE_PATH)
+                } else -1
+                val bucketCol = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    cursor.getColumnIndex(MediaStore.Video.Media.BUCKET_DISPLAY_NAME)
                 } else -1
 
                 while (cursor.moveToNext()) {
                     val id = cursor.getLong(idCol)
-                    val rawTitle = if (titleCol >= 0) cursor.getString(titleCol) else null
+                    val title = if (titleCol >= 0) cursor.getString(titleCol) ?: "Video $id" else "Video $id"
                     val duration = if (durationCol >= 0) cursor.getLong(durationCol) else 0L
                     val size = if (sizeCol >= 0) cursor.getLong(sizeCol) else 0L
-                    val dateAdded = if (dateCol >= 0) cursor.getLong(dateCol) * 1000L else System.currentTimeMillis()
-                    val dataPath = if (dataCol >= 0) cursor.getString(dataCol) ?: "" else ""
+                    val dateAdded = if (dateAddedCol >= 0) cursor.getLong(dateAddedCol) * 1000L else 0L
                     val width = if (widthCol >= 0) cursor.getInt(widthCol) else 0
                     val height = if (heightCol >= 0) cursor.getInt(heightCol) else 0
 
-                    val bucketName = if (bucketCol >= 0) cursor.getString(bucketCol) else null
-                    val relativePath = if (relPathCol >= 0) cursor.getString(relPathCol) else null
+                    var folderName = "Videos"
+                    var folderPath = ""
 
-                    val folderName = when {
-                        !bucketName.isNullOrBlank() -> bucketName
-                        dataPath.isNotBlank() -> File(dataPath).parentFile?.name ?: "Videos"
-                        !relativePath.isNullOrBlank() -> relativePath.trim('/').split('/').lastOrNull() ?: "Videos"
-                        else -> "Videos"
+                    if (bucketCol >= 0 && !cursor.isNull(bucketCol)) {
+                        folderName = cursor.getString(bucketCol) ?: "Videos"
+                    } else if (relPathCol >= 0 && !cursor.isNull(relPathCol)) {
+                        val rel = cursor.getString(relPathCol) ?: ""
+                        val parts = rel.trim('/').split('/')
+                        folderName = parts.lastOrNull()?.ifBlank { "Videos" } ?: "Videos"
+                        folderPath = rel
+                    } else if (dataCol >= 0 && !cursor.isNull(dataCol)) {
+                        val path = cursor.getString(dataCol) ?: ""
+                        val parentFile = File(path).parentFile
+                        if (parentFile != null) {
+                            folderName = parentFile.name
+                            folderPath = parentFile.absolutePath
+                        }
                     }
 
-                    val folderPath = when {
-                        dataPath.isNotBlank() -> File(dataPath).parentFile?.absolutePath ?: ""
-                        !relativePath.isNullOrBlank() -> relativePath
-                        else -> folderName
+                    if (folderPath.isBlank() && dataCol >= 0 && !cursor.isNull(dataCol)) {
+                        folderPath = File(cursor.getString(dataCol) ?: "").parentFile?.absolutePath ?: ""
                     }
 
-                    val title = when {
-                        !rawTitle.isNullOrBlank() -> rawTitle
-                        dataPath.isNotBlank() -> File(dataPath).nameWithoutExtension
-                        else -> "Video_${id}"
-                    }
-
+                    val uri = ContentUris.withAppendedId(videoUri, id).toString()
                     val resolution = when {
-                        (width >= 3840 && height >= 2160) || (width >= 2160 && height >= 3840) -> "4K"
-                        (width >= 1920 && height >= 1080) || (width >= 1080 && height >= 1920) -> "1080p"
-                        (width >= 1280 && height >= 720) || (width >= 720 && height >= 1280) -> "720p"
-                        (width >= 854 && height >= 480) || (width >= 480 && height >= 854) -> "480p"
-                        width > 0 && height > 0 -> "${width}x${height}"
+                        width >= 3840 || height >= 2160 -> "4K"
+                        width >= 1920 || height >= 1080 -> "1080p"
+                        width >= 1280 || height >= 720 -> "720p"
+                        width >= 854 || height >= 480 -> "480p"
+                        width > 0 -> "${height}p"
                         else -> "HD"
                     }
-
-                    val contentUri = ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id)
 
                     scannedVideos.add(
                         VideoItem(
                             id = id.toString(),
                             title = title,
                             durationMs = duration,
-                            uri = contentUri.toString(),
-                            thumbnailUri = contentUri.toString(),
+                            uri = uri,
+                            thumbnailUri = uri,
                             sizeBytes = size,
                             resolution = resolution,
                             width = width,
                             height = height,
                             folderName = folderName,
                             folderPath = folderPath,
-                            dateAdded = dateAdded
+                            dateAdded = dateAdded,
+                            isFavorite = false,
+                            playbackPositionMs = 0L,
+                            lastWatchedTimestamp = 0L
                         )
                     )
                 }
             }
 
-        } catch (e: Exception) {
-            // Handled gracefully if no storage permissions or empty storage
-        }
+            // Cleanup deleted / moved files safely in Room
+            val validSongIds = scannedAudio.map { it.id }
+            if (validSongIds.isNotEmpty()) {
+                dao.cleanupOrphanFavoriteSongs(validSongIds)
+                dao.cleanupOrphanPlaylistSongs(validSongIds)
+                dao.cleanupOrphanListeningHistory(validSongIds)
+            }
 
-        val totalDuration = scannedAudio.sumOf { it.durationMs }
+            val validVideoIds = scannedVideos.map { it.id }
+            if (validVideoIds.isNotEmpty()) {
+                dao.cleanupOrphanFavoriteVideos(validVideoIds)
+            }
+
+        } catch (_: Exception) {}
+
+        _rawAudioTracks.value = scannedAudio
+        _allScannedVideos.value = scannedVideos
+
+        val totalAudioDuration = scannedAudio.sumOf { it.durationMs }
         val totalSize = scannedAudio.sumOf { it.sizeBytes } + scannedVideos.sumOf { it.sizeBytes }
 
-        _audioTracks.value = scannedAudio.distinctBy { it.id }
-        _allScannedVideos.value = scannedVideos.distinctBy { it.id }
-        val hiddenSet = _hiddenFolderPaths.value
-        val visibleVideoCount = scannedVideos.count { !hiddenSet.contains(it.folderPath) && !hiddenSet.contains(it.folderName) }
         _storageStats.value = _storageStats.value.copy(
             audioCount = scannedAudio.size,
-            videoCount = visibleVideoCount,
-            totalAudioDurationMs = totalDuration,
+            videoCount = scannedVideos.size,
+            totalAudioDurationMs = totalAudioDuration,
             totalStorageUsedBytes = totalSize,
             isScanning = false
         )
     }
 
+    // 1. Favorite Songs
     override suspend fun toggleFavorite(trackId: String) {
-        if (favoriteIds.contains(trackId)) {
-            favoriteIds.remove(trackId)
+        val currentFavs = favoriteSongIdsFlow.first()
+        if (currentFavs.contains(trackId)) {
+            dao.deleteFavoriteSong(trackId)
         } else {
-            favoriteIds.add(trackId)
+            dao.insertFavoriteSong(FavoriteSongEntity(songId = trackId))
         }
-        updateTrackFavoriteState()
     }
 
     override suspend fun addFavorites(trackIds: List<String>) {
-        favoriteIds.addAll(trackIds)
-        updateTrackFavoriteState()
+        dao.insertFavoriteSongs(trackIds.map { FavoriteSongEntity(songId = it) })
     }
 
-    private fun updateTrackFavoriteState() {
-        _audioTracks.value = _audioTracks.value.map { track ->
-            track.copy(isFavorite = favoriteIds.contains(track.id))
-        }
-        // Update default favorites playlist
-        _playlists.value = _playlists.value.map { pl ->
-            if (pl.id == "favorites_default") {
-                pl.copy(trackIds = favoriteIds.toList())
-            } else pl
-        }
-    }
-
+    // 3. Custom Playlists & 4. Song Relationships
     override suspend fun createPlaylist(name: String, trackIds: List<String>) {
-        val newPlaylist = Playlist(
-            id = "playlist_${System.currentTimeMillis()}",
-            name = name,
-            trackIds = trackIds
-        )
-        _playlists.value = _playlists.value + newPlaylist
+        val playlistId = "playlist_${UUID.randomUUID().toString().take(8)}"
+        dao.insertPlaylist(PlaylistEntity(id = playlistId, name = name))
+        if (trackIds.isNotEmpty()) {
+            val refs = trackIds.mapIndexed { index, songId ->
+                PlaylistSongCrossRef(playlistId = playlistId, songId = songId, orderIndex = index)
+            }
+            dao.insertPlaylistSongRefs(refs)
+        }
     }
 
     override suspend fun renamePlaylist(playlistId: String, newName: String) {
-        _playlists.value = _playlists.value.map { pl ->
-            if (pl.id == playlistId) pl.copy(name = newName) else pl
-        }
+        dao.updatePlaylistName(playlistId, newName)
     }
 
     override suspend fun deletePlaylist(playlistId: String) {
-        _playlists.value = _playlists.value.filter { it.id != playlistId }
+        dao.deletePlaylist(playlistId)
+        dao.clearSongsFromPlaylist(playlistId)
     }
 
     override suspend fun addTracksToPlaylist(playlistId: String, trackIds: List<String>) {
-        _playlists.value = _playlists.value.map { pl ->
-            if (pl.id == playlistId) {
-                val updatedIds = (pl.trackIds + trackIds).distinct()
-                pl.copy(trackIds = updatedIds)
-            } else pl
+        val currentRefs = dao.getAllPlaylistSongCrossRefsDirect().filter { it.playlistId == playlistId }
+        val existingSongIds = currentRefs.map { it.songId }.toSet()
+        var nextOrder = currentRefs.size
+        val newRefs = trackIds.filter { !existingSongIds.contains(it) }.map { songId ->
+            PlaylistSongCrossRef(playlistId = playlistId, songId = songId, orderIndex = nextOrder++)
+        }
+        if (newRefs.isNotEmpty()) {
+            dao.insertPlaylistSongRefs(newRefs)
         }
     }
 
     override suspend fun removeTrackFromPlaylist(playlistId: String, trackId: String) {
-        _playlists.value = _playlists.value.map { pl ->
-            if (pl.id == playlistId) {
-                pl.copy(trackIds = pl.trackIds.filter { it != trackId })
-            } else pl
-        }
+        dao.removeSongFromPlaylist(playlistId, trackId)
     }
 
     override suspend fun reorderPlaylist(playlistId: String, fromIndex: Int, toIndex: Int) {
-        _playlists.value = _playlists.value.map { pl ->
-            if (pl.id == playlistId) {
-                val list = pl.trackIds.toMutableList()
-                if (fromIndex in list.indices && toIndex in list.indices) {
-                    val item = list.removeAt(fromIndex)
-                    list.add(toIndex, item)
-                }
-                pl.copy(trackIds = list)
-            } else pl
+        val currentRefs = dao.getAllPlaylistSongCrossRefsDirect()
+            .filter { it.playlistId == playlistId }
+            .sortedBy { it.orderIndex }
+            .toMutableList()
+
+        if (fromIndex in currentRefs.indices && toIndex in currentRefs.indices) {
+            val item = currentRefs.removeAt(fromIndex)
+            currentRefs.add(toIndex, item)
+            dao.reorderPlaylistSongs(playlistId, currentRefs.map { it.songId })
         }
     }
 
+    // 5. Listening History
     override suspend fun recordTrackPlayed(trackId: String) {
-        // Update recently played (push to front, max 50)
-        val currentList = _recentlyPlayedIds.value.filter { it != trackId }.toMutableList()
-        currentList.add(0, trackId)
-        if (currentList.size > 50) {
-            _recentlyPlayedIds.value = currentList.take(50)
-        } else {
-            _recentlyPlayedIds.value = currentList
-        }
-
-        // Update play counts
-        val count = (_playCounts.value[trackId] ?: 0) + 1
-        _playCounts.value = _playCounts.value + (trackId to count)
-
-        _audioTracks.value = _audioTracks.value.map { track ->
-            if (track.id == trackId) track.copy(playCount = count) else track
-        }
+        dao.recordSongPlayed(trackId)
     }
 
+    // 2. Favorite Videos
     override suspend fun toggleVideoFavorite(videoId: String) {
-        val current = _favoriteVideoIds.value.toMutableSet()
-        if (current.contains(videoId)) {
-            current.remove(videoId)
+        val currentFavs = favoriteVideoIds.first()
+        if (currentFavs.contains(videoId)) {
+            dao.deleteFavoriteVideo(videoId)
         } else {
-            current.add(videoId)
+            dao.insertFavoriteVideo(FavoriteVideoEntity(videoId = videoId))
         }
-        videoPrefs.edit().putStringSet("favorite_video_ids", current).apply()
-        _favoriteVideoIds.value = current
     }
 
+    // 11. Hidden Folders
     override suspend fun hideVideoFolder(folderPath: String) {
         if (folderPath.isBlank()) return
-        val current = _hiddenFolderPaths.value.toMutableSet()
-        current.add(folderPath)
-        videoPrefs.edit().putStringSet("hidden_video_folders", current).apply()
-        _hiddenFolderPaths.value = current
-
-        // Update stats
-        val totalSize = _audioTracks.value.sumOf { it.sizeBytes } + _allScannedVideos.value.sumOf { it.sizeBytes }
-        _storageStats.value = _storageStats.value.copy(
-            videoCount = _allScannedVideos.value.count { !current.contains(it.folderPath) && !current.contains(it.folderName) },
-            totalStorageUsedBytes = totalSize
-        )
+        dao.insertHiddenFolder(HiddenFolderEntity(folderPath = folderPath, mediaType = "VIDEO"))
     }
 
     override suspend fun unhideVideoFolder(folderPath: String) {
-        val current = _hiddenFolderPaths.value.toMutableSet()
-        current.remove(folderPath)
-        videoPrefs.edit().putStringSet("hidden_video_folders", current).apply()
-        _hiddenFolderPaths.value = current
-
-        // Update stats
-        val totalSize = _audioTracks.value.sumOf { it.sizeBytes } + _allScannedVideos.value.sumOf { it.sizeBytes }
-        _storageStats.value = _storageStats.value.copy(
-            videoCount = _allScannedVideos.value.count { !current.contains(it.folderPath) && !current.contains(it.folderName) },
-            totalStorageUsedBytes = totalSize
-        )
+        dao.deleteHiddenFolder(folderPath)
     }
 
     override suspend fun unhideAllVideoFolders() {
-        videoPrefs.edit().remove("hidden_video_folders").apply()
-        _hiddenFolderPaths.value = emptySet()
-
-        val totalSize = _audioTracks.value.sumOf { it.sizeBytes } + _allScannedVideos.value.sumOf { it.sizeBytes }
-        _storageStats.value = _storageStats.value.copy(
-            videoCount = _allScannedVideos.value.size,
-            totalStorageUsedBytes = totalSize
-        )
+        dao.deleteAllHiddenFolders()
     }
 
+    // 6. Video Watching History & 8. Last Video Playback Position
     override suspend fun updateVideoProgress(videoId: String, positionMs: Long, durationMs: Long) {
-        val now = System.currentTimeMillis()
+        dao.recordVideoWatched(videoId)
         val isCompleted = durationMs > 0 && positionMs >= (durationMs * 0.95).toLong()
-
-        val editor = videoPrefs.edit()
-        editor.putLong("watched_$videoId", now)
         if (isCompleted || positionMs <= 0L) {
-            editor.remove("pos_$videoId")
+            dao.deleteVideoPlaybackPosition(videoId)
         } else {
-            editor.putLong("pos_$videoId", positionMs)
+            dao.saveVideoPlaybackPosition(
+                LastVideoPlaybackEntity(videoId = videoId, positionMs = positionMs, durationMs = durationMs)
+            )
         }
-        editor.apply()
-
-        val updatedProgress = _videoProgress.value.toMutableMap()
-        if (isCompleted || positionMs <= 0L) {
-            updatedProgress.remove(videoId)
-        } else {
-            updatedProgress[videoId] = positionMs
-        }
-        _videoProgress.value = updatedProgress
-
-        val updatedWatched = _videoLastWatched.value.toMutableMap()
-        updatedWatched[videoId] = now
-        _videoLastWatched.value = updatedWatched
     }
 
     override suspend fun clearVideoProgress(videoId: String) {
-        videoPrefs.edit().remove("pos_$videoId").apply()
-        val updatedProgress = _videoProgress.value.toMutableMap()
-        updatedProgress.remove(videoId)
-        _videoProgress.value = updatedProgress
+        dao.deleteVideoPlaybackPosition(videoId)
     }
 
-    private fun loadVideoProgress(): Map<String, Long> {
-        val map = mutableMapOf<String, Long>()
-        try {
-            videoPrefs.all.forEach { (key, value) ->
-                if (key.startsWith("pos_")) {
-                    when (value) {
-                        is Long -> map[key.removePrefix("pos_")] = value
-                        is Int -> map[key.removePrefix("pos_")] = value.toLong()
-                    }
-                }
-            }
-        } catch (_: Exception) {}
-        return map
+    // 7. Last Music Playback Position
+    override suspend fun saveMusicPlaybackPosition(songId: String, positionMs: Long, durationMs: Long) {
+        dao.saveMusicPlaybackPosition(
+            LastMusicPlaybackEntity(songId = songId, positionMs = positionMs, durationMs = durationMs)
+        )
     }
 
-    private fun loadVideoLastWatched(): Map<String, Long> {
-        val map = mutableMapOf<String, Long>()
-        try {
-            videoPrefs.all.forEach { (key, value) ->
-                if (key.startsWith("watched_")) {
-                    when (value) {
-                        is Long -> map[key.removePrefix("watched_")] = value
-                        is Int -> map[key.removePrefix("watched_")] = value.toLong()
-                    }
-                }
-            }
-        } catch (_: Exception) {}
-        return map
+    // 9. Equalizer Preferences
+    override suspend fun saveEqualizerPreference(
+        isEnabled: Boolean,
+        presetName: String,
+        bassBoost: Int,
+        virtualizer: Int,
+        bandLevelsCsv: String
+    ) {
+        dao.saveEqualizerPreference(
+            EqualizerPreferenceEntity(
+                id = 1,
+                isEnabled = isEnabled,
+                presetName = presetName,
+                bassBoost = bassBoost,
+                virtualizer = virtualizer,
+                bandLevelsCsv = bandLevelsCsv
+            )
+        )
+    }
+
+    // 10. Theme Preferences
+    override suspend fun saveThemePreference(
+        themeMode: String,
+        accentColorHex: String,
+        pureBlackAmoled: Boolean
+    ) {
+        dao.saveThemePreference(
+            ThemePreferenceEntity(
+                id = 1,
+                themeMode = themeMode,
+                accentColorHex = accentColorHex,
+                pureBlackAmoled = pureBlackAmoled
+            )
+        )
+    }
+
+    // 12. Sleep Timer Preferences
+    override suspend fun saveSleepTimerPreference(
+        durationMinutes: Int,
+        finishLastSong: Boolean,
+        fadeOutEnabled: Boolean
+    ) {
+        dao.saveSleepTimerPreference(
+            SleepTimerPreferenceEntity(
+                id = 1,
+                defaultDurationMinutes = durationMinutes,
+                finishLastSong = finishLastSong,
+                fadeOutEnabled = fadeOutEnabled
+            )
+        )
+    }
+
+    override suspend fun clearListeningHistory() {
+        dao.clearListeningHistory()
+    }
+
+    override suspend fun clearWatchingHistory() {
+        dao.clearVideoWatchingHistory()
     }
 }

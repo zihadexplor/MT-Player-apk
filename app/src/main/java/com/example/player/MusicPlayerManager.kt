@@ -40,6 +40,14 @@ class MusicPlayerManager(
     private val _playbackState = MutableStateFlow(PlaybackState())
     val playbackState: StateFlow<PlaybackState> = _playbackState.asStateFlow()
 
+    private val _sleepTimerRemainingSeconds = MutableStateFlow<Int?>(null)
+    val sleepTimerRemainingSeconds: StateFlow<Int?> = _sleepTimerRemainingSeconds.asStateFlow()
+
+    private var sleepTimerJob: Job? = null
+    private var finishLastSongOnTimer: Boolean = false
+    private var fadeOutAudioOnTimer: Boolean = true
+    private var waitingForSongFinish: Boolean = false
+
     private var currentQueue: List<AudioTrack> = emptyList()
 
     private val playerListener = object : Player.Listener {
@@ -71,6 +79,12 @@ class MusicPlayerManager(
                             currentPositionMs = it.durationMs
                         )
                     }
+                    if (waitingForSongFinish) {
+                        pause()
+                        player.volume = 1.0f
+                        waitingForSongFinish = false
+                        _sleepTimerRemainingSeconds.value = null
+                    }
                 }
                 Player.STATE_BUFFERING -> {}
                 Player.STATE_IDLE -> {}
@@ -78,6 +92,12 @@ class MusicPlayerManager(
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            if (waitingForSongFinish) {
+                pause()
+                player.volume = 1.0f
+                waitingForSongFinish = false
+                _sleepTimerRemainingSeconds.value = null
+            }
             val currentIndex = player.currentMediaItemIndex
             if (currentIndex in currentQueue.indices) {
                 val track = currentQueue[currentIndex]
@@ -357,8 +377,50 @@ class MusicPlayerManager(
         _playbackState.update { it.copy(errorMessage = null) }
     }
 
+    fun startSleepTimer(minutes: Int, finishLastSong: Boolean = false, fadeOutAudio: Boolean = true) {
+        stopSleepTimer()
+        finishLastSongOnTimer = finishLastSong
+        fadeOutAudioOnTimer = fadeOutAudio
+        waitingForSongFinish = false
+
+        val totalSeconds = minutes * 60
+        _sleepTimerRemainingSeconds.value = totalSeconds
+
+        sleepTimerJob = scope.launch {
+            var remaining = totalSeconds
+            while (isActive && remaining > 0) {
+                delay(1000L)
+                remaining--
+                _sleepTimerRemainingSeconds.value = remaining
+
+                if (fadeOutAudioOnTimer && remaining <= 30) {
+                    val volumeFraction = (remaining / 30f).coerceIn(0.05f, 1.0f)
+                    player.volume = volumeFraction
+                }
+            }
+
+            if (finishLastSongOnTimer) {
+                waitingForSongFinish = true
+                _sleepTimerRemainingSeconds.value = 0
+            } else {
+                pause()
+                player.volume = 1.0f
+                _sleepTimerRemainingSeconds.value = null
+            }
+        }
+    }
+
+    fun stopSleepTimer() {
+        sleepTimerJob?.cancel()
+        sleepTimerJob = null
+        waitingForSongFinish = false
+        player.volume = 1.0f
+        _sleepTimerRemainingSeconds.value = null
+    }
+
     fun release() {
         stopProgressTracker()
+        stopSleepTimer()
         player.removeListener(playerListener)
         // Note: Do not release shared player here so background service continues seamlessly!
     }

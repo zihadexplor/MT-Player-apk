@@ -85,6 +85,34 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val mostPlayedTracks: StateFlow<List<AudioTrack>> = repository.mostPlayedTracks
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val lastMusicPlayback = repository.lastMusicPlayback
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    val lastVideoPlaybackPositions = repository.lastVideoPlaybackPositions
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val themePreference = repository.themePreference
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    val sleepTimerPreference = repository.sleepTimerPreference
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    val sleepTimerRemainingSeconds = playerManager.sleepTimerRemainingSeconds
+
+    // Phase 11 Settings States
+    val gaplessPlayback = MutableStateFlow(true)
+    val autoPauseOnHeadset = MutableStateFlow(true)
+    val crossfadeSeconds = MutableStateFlow(0)
+    val hardwareAcceleration = MutableStateFlow(true)
+    val resumeVideo = MutableStateFlow(true)
+    val defaultVideoSpeed = MutableStateFlow(1.0f)
+    val doubleTapSeekSeconds = MutableStateFlow(10)
+    val gestureBrightness = MutableStateFlow(true)
+    val gestureVolume = MutableStateFlow(true)
+    val gestureScrub = MutableStateFlow(true)
+    val minAudioDurationSeconds = MutableStateFlow(30)
+    val autoScanOnLaunch = MutableStateFlow(true)
+
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery.asStateFlow()
 
@@ -500,26 +528,79 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setEqualizerEnabled(enabled: Boolean) {
         equalizerManager.setEnabled(enabled)
+        persistEqualizerState()
     }
 
     fun setEqualizerBandLevel(bandIndex: Short, levelMb: Short) {
         equalizerManager.setBandLevel(bandIndex, levelMb)
+        persistEqualizerState()
     }
 
     fun applyEqualizerPreset(presetName: String) {
         equalizerManager.applyPreset(presetName)
+        persistEqualizerState()
     }
 
     fun setBassBoostStrength(strength: Int) {
         equalizerManager.setBassBoostStrength(strength)
+        persistEqualizerState()
     }
 
     fun setVirtualizerStrength(strength: Int) {
         equalizerManager.setVirtualizerStrength(strength)
+        persistEqualizerState()
     }
 
     fun resetEqualizerToDefault() {
         equalizerManager.resetToDefault()
+        persistEqualizerState()
+    }
+
+    private fun persistEqualizerState() {
+        val st = equalizerManager.equalizerState.value
+        val levelsCsv = st.bands.joinToString(",") { "${it.bandIndex}:${it.levelMb}" }
+        viewModelScope.launch {
+            repository.saveEqualizerPreference(
+                isEnabled = st.isEnabled,
+                presetName = st.currentPreset,
+                bassBoost = st.bassBoostStrength,
+                virtualizer = st.virtualizerStrength,
+                bandLevelsCsv = levelsCsv
+            )
+        }
+    }
+
+    fun saveThemePreference(themeMode: String, accentColorHex: String = "#1DB954", pureBlackAmoled: Boolean = true) {
+        viewModelScope.launch {
+            repository.saveThemePreference(themeMode, accentColorHex, pureBlackAmoled)
+        }
+    }
+
+    fun saveSleepTimerPreference(durationMinutes: Int, finishLastSong: Boolean = false, fadeOutEnabled: Boolean = true) {
+        viewModelScope.launch {
+            repository.saveSleepTimerPreference(durationMinutes, finishLastSong, fadeOutEnabled)
+        }
+    }
+
+    fun startSleepTimer(minutes: Int, finishLastSong: Boolean = false, fadeOutAudio: Boolean = true) {
+        playerManager.startSleepTimer(minutes, finishLastSong, fadeOutAudio)
+        saveSleepTimerPreference(minutes, finishLastSong, fadeOutAudio)
+    }
+
+    fun stopSleepTimer() {
+        playerManager.stopSleepTimer()
+    }
+
+    fun clearListeningHistory() {
+        viewModelScope.launch {
+            repository.clearListeningHistory()
+        }
+    }
+
+    fun clearWatchingHistory() {
+        viewModelScope.launch {
+            repository.clearWatchingHistory()
+        }
     }
 
     override fun onCleared() {
