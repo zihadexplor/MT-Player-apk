@@ -47,6 +47,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
       - name: Configure git identity
         run: |
           git config user.name "github-actions[bot]"
@@ -87,14 +90,29 @@ jobs:
           MT_KEY_ALIAS: ${{ secrets.MT_KEY_ALIAS }}
           MT_KEY_PASSWORD: ${{ secrets.MT_KEY_PASSWORD }}
           MT_UPDATER_TOKEN: ${{ secrets.MT_UPDATER_TOKEN }}
-        run: ./gradlew --no-configuration-cache assembleRelease testDebugUnitTest
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-configuration-cache assembleRelease testDebugUnitTest
 
       - name: Verify signature & rename APK
         id: apk
+        env:
+          MT_KEYSTORE_PASSWORD: ${{ secrets.MT_KEYSTORE_PASSWORD }}
+          MT_KEY_ALIAS: ${{ secrets.MT_KEY_ALIAS }}
+          MT_KEY_PASSWORD: ${{ secrets.MT_KEY_PASSWORD }}
         run: |
           BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
           SRC=$(ls app/build/outputs/apk/release/*.apk | grep -v unsigned | head -1)
           if [ -z "$SRC" ]; then echo "::error::No signed APK produced"; exit 1; fi
+
+          if [ -n "$MT_KEYSTORE_PATH" ] && [ -f "$MT_KEYSTORE_PATH" ]; then
+            echo "Signing release APK with constant release keystore..."
+            "$BT/apksigner" sign --ks "$MT_KEYSTORE_PATH" \
+              --ks-pass "pass:$MT_KEYSTORE_PASSWORD" \
+              --ks-key-alias "$MT_KEY_ALIAS" \
+              --key-pass "pass:$MT_KEY_PASSWORD" \
+              "$SRC"
+          fi
 
           ACTUAL=$("$BT/apksigner" verify --print-certs "$SRC" | grep -m1 'certificate SHA-256 digest' | awk '{print $NF}')
           EXPECTED=$(tr -d '[:space:]' < .github/release-signing-cert.sha256)

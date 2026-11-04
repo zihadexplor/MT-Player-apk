@@ -28,3 +28,8 @@ dist/
 *.aab
 *.dex
 *.ap_
+
+# AI Studio local metadata
+.aistudio/
+public/
+
