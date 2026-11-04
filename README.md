@@ -2,7 +2,7 @@
 
 A modern, offline music & video player for Android, built with Kotlin, Jetpack Compose and Media3 (ExoPlayer).
 MT Player ships with a built-in, signature-verified updater that delivers new versions straight from GitHub Releases.
-Sleep Timer.
+
 | | |
 |---|---|
 | **Min Android** | 9 (API 28) |
