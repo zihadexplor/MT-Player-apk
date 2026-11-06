@@ -1,8 +1,45 @@
+import java.util.Properties
+
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.compose)
   alias(libs.plugins.google.devtools.ksp)
 }
+
+// Version — single source of truth lives in /version.properties (bumped by the Release workflow)
+val versionProps = Properties().apply {
+  rootProject.file("version.properties").inputStream().use { load(it) }
+}
+val appVersionName: String = versionProps.getProperty("VERSION_NAME")
+val appVersionCode: Int = versionProps.getProperty("VERSION_CODE").toInt()
+
+// Constant release keystore (NEVER generated on the fly):
+//   * CI:    decoded from the GitHub secret MT_KEYSTORE_BASE64 (see release.yml)
+//   * Local: referenced from the git-ignored /keystore.properties (see keystore.properties.example)
+// If neither is present, release builds are produced UNSIGNED instead of with a random key.
+val keystoreProps = Properties().apply {
+  val f = rootProject.file("keystore.properties")
+  if (f.exists()) f.inputStream().use { load(it) }
+}
+
+fun secret(envName: String, propName: String): String? =
+  System.getenv(envName)?.takeIf { it.isNotBlank() }
+    ?: keystoreProps.getProperty(propName)?.takeIf { it.isNotBlank() }
+
+val releaseStoreFile = secret("MT_KEYSTORE_PATH", "storeFile")
+val releaseStorePassword = secret("MT_KEYSTORE_PASSWORD", "storePassword")
+val releaseKeyAlias = secret("MT_KEY_ALIAS", "keyAlias")
+val releaseKeyPassword = secret("MT_KEY_PASSWORD", "keyPassword")
+val hasReleaseSigning = listOf(releaseStoreFile, releaseStorePassword, releaseKeyAlias, releaseKeyPassword)
+  .all { it != null } && rootProject.file(releaseStoreFile!!).exists()
+
+// In-app updater configuration (GitHub Releases)
+val updateRepoOwner = secret("MT_UPDATE_REPO_OWNER", "updateRepoOwner") ?: "zihadexplor"
+val updateRepoName = secret("MT_UPDATE_REPO_NAME", "updateRepoName") ?: "MT-Player-apk"
+val updaterToken = secret("MT_UPDATER_TOKEN", "updaterToken") ?: ""
+val obfuscationKey = (appVersionCode * 31 + 0x5A) and 0xFF
+val obfuscatedToken = updaterToken.toByteArray(Charsets.UTF_8)
+  .joinToString(",") { ((it.toInt() xor obfuscationKey) and 0xFF).toString() }
 
 android {
   namespace = "com.example"
@@ -10,34 +47,32 @@ android {
 
   defaultConfig {
     applicationId = "com.aistudio.mtplayer.kmzv"
-    minSdk = 24
+    minSdk = 28 // Android 9 (Pie)
     targetSdk = 36
-    versionCode = 1
-    versionName = "1.0"
+    versionCode = appVersionCode
+    versionName = appVersionName
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-    buildConfigField("boolean", "AUTO_UPDATE_CHECK", "false")
-    buildConfigField("String", "UPDATE_REPO_OWNER", "\"zihadexplor\"")
-    buildConfigField("String", "UPDATE_REPO_NAME", "\"MT-Player-apk\"")
-    buildConfigField("int", "UPDATER_TOKEN_KEY", "0")
-    buildConfigField("int[]", "UPDATER_TOKEN_BYTES", "new int[]{}")
+    buildConfigField("String", "UPDATE_REPO_OWNER", "\"$updateRepoOwner\"")
+    buildConfigField("String", "UPDATE_REPO_NAME", "\"$updateRepoName\"")
+    buildConfigField("int[]", "UPDATER_TOKEN_BYTES", "new int[]{$obfuscatedToken}")
+    buildConfigField("int", "UPDATER_TOKEN_KEY", "$obfuscationKey")
   }
 
-  // Do not remove or modify these signingConfigs. They are necessary for
-  // compatibility with past versions of your project.
+  // Release signing uses ONLY the constant release keystore (see above). Do not point this at a
+  // debug keystore: the Release workflow verifies the certificate fingerprint.
   signingConfigs {
-    create("release") {
-      storeFile = rootProject.file("debug.keystore")
-      storePassword = "android"
-      keyAlias = "androiddebugkey"
-      keyPassword = "android"
-    }
-    register("debugConfig") {
-      storeFile = rootProject.file("debug.keystore")
-      storePassword = "android"
-      keyAlias = "androiddebugkey"
-      keyPassword = "android"
+    if (hasReleaseSigning) {
+      create("release") {
+        storeFile = rootProject.file(releaseStoreFile!!)
+        storePassword = releaseStorePassword
+        keyAlias = releaseKeyAlias
+        keyPassword = releaseKeyPassword
+        enableV1Signing = true
+        enableV2Signing = true
+        enableV3Signing = true
+      }
     }
   }
 
@@ -45,10 +80,14 @@ android {
     release {
       isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-      signingConfig = signingConfigs.getByName("release")
+      signingConfig = if (hasReleaseSigning) signingConfigs.getByName("release") else null
+      buildConfigField("boolean", "AUTO_UPDATE_CHECK", "true")
     }
     debug {
-      signingConfig = signingConfigs.getByName("debugConfig")
+      // Debug builds install side-by-side with the release app and never replace it.
+      applicationIdSuffix = ".debug"
+      versionNameSuffix = "-debug"
+      buildConfigField("boolean", "AUTO_UPDATE_CHECK", "false")
     }
   }
 
@@ -62,14 +101,15 @@ android {
     buildConfig = true
   }
 
-  testOptions {
-    unitTests {
-      isIncludeAndroidResources = true
-      all {
-        it.systemProperty("robolectric.dependency.dir", "/home/appuser/.m2/repository/org/robolectric/android-all-instrumented/16-robolectric-13921718-i7")
-        it.systemProperty("robolectric.offline", "true")
-      }
-    }
+  testOptions { unitTests { isIncludeAndroidResources = true } }
+
+  packaging {
+    resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+  }
+
+  dependenciesInfo {
+    includeInApk = false
+    includeInBundle = false
   }
 }
 
