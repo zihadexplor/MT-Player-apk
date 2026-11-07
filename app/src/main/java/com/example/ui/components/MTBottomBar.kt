@@ -51,9 +51,9 @@ fun MTBottomBar(
         modifier = modifier
             .fillMaxWidth()
             .testTag("mt_bottom_navigation_bar"),
-        color = DarkSurface,
+        color = MaterialTheme.colorScheme.surface,
         tonalElevation = 8.dp,
-        border = androidx.compose.foundation.BorderStroke(0.5.dp, DarkOutlineVariant)
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Row(
             modifier = Modifier
@@ -63,15 +63,19 @@ fun MTBottomBar(
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val primaryColor = MaterialTheme.colorScheme.primary
+            val onSurfaceColor = MaterialTheme.colorScheme.onSurface
+            val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
+
             bottomNavItems.forEach { item ->
                 val isSelected = currentRoute == item.route
                 val iconTint by animateColorAsState(
-                    targetValue = if (isSelected) SpotifyGreen else TextTertiary,
+                    targetValue = if (isSelected) primaryColor else onSurfaceVariantColor,
                     animationSpec = tween(durationMillis = 200),
                     label = "iconTint"
                 )
                 val labelColor by animateColorAsState(
-                    targetValue = if (isSelected) TextPrimary else TextSecondary,
+                    targetValue = if (isSelected) primaryColor else onSurfaceVariantColor,
                     animationSpec = tween(durationMillis = 200),
                     label = "labelColor"
                 )
@@ -99,7 +103,7 @@ fun MTBottomBar(
                         modifier = Modifier
                             .clip(RoundedCornerShape(16.dp))
                             .background(
-                                if (isSelected) SpotifyGreen.copy(alpha = 0.15f)
+                                if (isSelected) primaryColor.copy(alpha = 0.15f)
                                 else Color.Transparent
                             )
                             .padding(horizontal = 14.dp, vertical = 4.dp),

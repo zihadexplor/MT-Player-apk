@@ -54,7 +54,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.VideoItem
 import com.example.ui.components.formatDuration
-import com.example.ui.theme.SpotifyGreen
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 
@@ -117,12 +116,12 @@ fun VideoPlayerTopBar(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(
                     shape = RoundedCornerShape(4.dp),
-                    color = SpotifyGreen.copy(alpha = 0.25f)
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
                 ) {
                     Text(
                         text = video.resolution,
                         style = MaterialTheme.typography.labelSmall,
-                        color = SpotifyGreen,
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
                     )
@@ -209,7 +208,7 @@ fun VideoPlayerTopBar(
                     Spacer(modifier = Modifier.width(2.dp))
                     Text(
                         text = "${currentSpeed}x",
-                        color = SpotifyGreen,
+                        color = MaterialTheme.colorScheme.primary,
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         fontSize = 10.sp
@@ -318,7 +317,7 @@ fun VideoPlayerCenterControls(
             modifier = Modifier
                 .size(68.dp)
                 .clip(CircleShape)
-                .background(SpotifyGreen)
+                .background(MaterialTheme.colorScheme.primary)
                 .clickable { onPlayPause() }
                 .testTag("video_play_pause_btn"),
             contentAlignment = Alignment.Center
@@ -326,7 +325,7 @@ fun VideoPlayerCenterControls(
             Icon(
                 imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                 contentDescription = if (isPlaying) "Pause" else "Play",
-                tint = Color.Black,
+                tint = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier.size(38.dp)
             )
         }
@@ -398,8 +397,8 @@ fun VideoPlayerBottomBar(
             onValueChange = onSeekProgressChange,
             onValueChangeFinished = onSeekProgressFinish,
             colors = SliderDefaults.colors(
-                thumbColor = SpotifyGreen,
-                activeTrackColor = SpotifyGreen,
+                thumbColor = MaterialTheme.colorScheme.primary,
+                activeTrackColor = MaterialTheme.colorScheme.primary,
                 inactiveTrackColor = Color.White.copy(alpha = 0.3f)
             ),
             modifier = Modifier
@@ -436,7 +435,7 @@ fun LockedFloatingUnlockButton(
                 Icon(
                     imageVector = Icons.Default.Lock,
                     contentDescription = "Unlock controls",
-                    tint = SpotifyGreen,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))

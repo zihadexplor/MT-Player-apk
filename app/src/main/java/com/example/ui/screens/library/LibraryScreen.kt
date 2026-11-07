@@ -148,10 +148,10 @@ fun LibraryScreen(
                         singleLine = true,
                         placeholder = { Text("e.g. Focus Chill", color = TextTertiary) },
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = SpotifyGreen,
-                            unfocusedBorderColor = DarkOutline,
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                         ),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -170,7 +170,7 @@ fun LibraryScreen(
                     },
                     modifier = Modifier.testTag("create_playlist_confirm")
                 ) {
-                    Text("Create", color = SpotifyGreen, fontWeight = FontWeight.Bold)
+                    Text("Create", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -178,10 +178,10 @@ fun LibraryScreen(
                     showCreateDialog = false
                     newPlaylistName = ""
                 }) {
-                    Text("Cancel", color = TextSecondary)
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
-            containerColor = DarkSurfaceContainerHigh
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         )
     }
 
@@ -203,10 +203,10 @@ fun LibraryScreen(
                     onValueChange = { renameText = it },
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = SpotifyGreen,
-                        unfocusedBorderColor = DarkOutline,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -220,15 +220,15 @@ fun LibraryScreen(
                         }
                     }
                 ) {
-                    Text("Save", color = SpotifyGreen, fontWeight = FontWeight.Bold)
+                    Text("Save", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { playlistToRename = null }) {
-                    Text("Cancel", color = TextSecondary)
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
-            containerColor = DarkSurfaceContainerHigh
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         )
     }
 
@@ -269,7 +269,7 @@ fun LibraryScreen(
                     Text("Cancel", color = TextSecondary)
                 }
             },
-            containerColor = DarkSurfaceContainerHigh
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         )
     }
 
@@ -360,26 +360,26 @@ fun LibraryScreen(
                             onClick = {
                                 onTrackClick(playlistTracks.first(), playlistTracks)
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = SpotifyGreen),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                             shape = RoundedCornerShape(20.dp),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null, tint = Color.Black)
+                            Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Play All", color = Color.Black, fontWeight = FontWeight.Bold)
+                            Text("Play All", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
                         }
 
                         Button(
                             onClick = {
                                 onTrackClick(playlistTracks.random(), playlistTracks.shuffled())
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                             shape = RoundedCornerShape(20.dp),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(imageVector = Icons.Default.Shuffle, contentDescription = null, tint = SpotifyGreen)
+                            Icon(imageVector = Icons.Default.Shuffle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Shuffle", color = TextPrimary, fontWeight = FontWeight.Bold)
+                            Text("Shuffle", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -401,7 +401,7 @@ fun LibraryScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(10.dp)),
-                        color = if (currentPlayingTrack?.id == track.id) SpotifyGreen.copy(alpha = 0.15f) else DarkSurfaceContainerHigh
+                        color = if (currentPlayingTrack?.id == track.id) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceContainerHigh
                     ) {
                         Row(
                             modifier = Modifier
@@ -422,7 +422,7 @@ fun LibraryScreen(
                                     text = track.title,
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = if (currentPlayingTrack?.id == track.id) SpotifyGreenBright else TextPrimary,
+                                    color = if (currentPlayingTrack?.id == track.id) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
@@ -511,13 +511,13 @@ fun LibraryScreen(
                             .minimumInteractiveComponentSize()
                             .size(36.dp)
                             .clip(CircleShape)
-                            .background(SpotifyGreen)
+                            .background(MaterialTheme.colorScheme.primary)
                             .testTag("add_playlist_button")
                     ) {
                         Icon(
                             imageVector = Icons.Default.Add,
                             contentDescription = "Create playlist",
-                            tint = Color.Black,
+                            tint = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -534,7 +534,7 @@ fun LibraryScreen(
                         title = "Favorite Songs",
                         subtitle = "${allTracks.count { it.isFavorite }} songs",
                         icon = Icons.Default.Favorite,
-                        iconTint = SpotifyGreen,
+                        iconTint = MaterialTheme.colorScheme.primary,
                         onClick = onNavigateToMusic,
                         modifier = Modifier.weight(1f),
                         testTag = "lib_fav_card"
@@ -543,7 +543,7 @@ fun LibraryScreen(
                         title = "Equalizer",
                         subtitle = "Audio Presets",
                         icon = Icons.Default.Equalizer,
-                        iconTint = SpotifyGreen,
+                        iconTint = MaterialTheme.colorScheme.primary,
                         onClick = onNavigateToEqualizer,
                         modifier = Modifier.weight(1f),
                         testTag = "lib_eq_card"
@@ -580,7 +580,7 @@ fun LibraryScreen(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(imageVector = Icons.Default.TrendingUp, contentDescription = null, tint = SpotifyGreen, modifier = Modifier.size(20.dp))
+                        Icon(imageVector = Icons.Default.TrendingUp, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "Most Played",
@@ -630,8 +630,8 @@ fun LibraryScreen(
                         .clip(RoundedCornerShape(12.dp))
                         .clickable { selectedPlaylistId = playlist.id }
                         .testTag("playlist_item_${playlist.id}"),
-                    color = DarkSurfaceContainerHigh,
-                    border = androidx.compose.foundation.BorderStroke(0.5.dp, DarkOutlineVariant)
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
                 ) {
                     Row(
                         modifier = Modifier.padding(12.dp),
@@ -641,13 +641,13 @@ fun LibraryScreen(
                             modifier = Modifier
                                 .size(44.dp)
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(SpotifyGreen.copy(alpha = 0.15f)),
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.QueueMusic,
                                 contentDescription = null,
-                                tint = SpotifyGreen,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(22.dp)
                             )
                         }
@@ -678,8 +678,8 @@ fun LibraryScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = DarkSurfaceContainerHigh),
-                    border = androidx.compose.foundation.BorderStroke(0.5.dp, DarkOutline)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                    border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
@@ -718,8 +718,8 @@ fun LibraryCategoryCard(
             .clip(RoundedCornerShape(12.dp))
             .clickable { onClick() }
             .testTag(testTag),
-        color = DarkSurfaceContainerHigh,
-        border = androidx.compose.foundation.BorderStroke(0.5.dp, DarkOutlineVariant)
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -775,7 +775,7 @@ fun MetricRow(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = SpotifyGreen,
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(18.dp)
             )
             Spacer(modifier = Modifier.width(10.dp))

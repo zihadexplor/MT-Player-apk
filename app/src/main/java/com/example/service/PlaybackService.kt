@@ -20,6 +20,8 @@ class PlaybackService : MediaSessionService() {
     private var mediaSession: MediaSession? = null
 
     companion object {
+        const val PLAYBACK_CHANNEL_ID = "mt_player_playback_channel"
+
         @Volatile
         var sharedPlayer: ExoPlayer? = null
             private set
@@ -59,6 +61,7 @@ class PlaybackService : MediaSessionService() {
 
     override fun onCreate() {
         super.onCreate()
+        ensureNotificationChannel()
         val player = getOrCreatePlayer(this)
 
         // Attach audio session if already initialized
@@ -81,6 +84,29 @@ class PlaybackService : MediaSessionService() {
         mediaSession = MediaSession.Builder(this, player)
             .setSessionActivity(pendingIntent)
             .build()
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        return try {
+            super.onStartCommand(intent, flags, startId)
+        } catch (_: Exception) {
+            START_NOT_STICKY
+        }
+    }
+
+    private fun ensureNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = android.app.NotificationChannel(
+                PLAYBACK_CHANNEL_ID,
+                "Playback",
+                android.app.NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Playback controls and notifications"
+                setShowBadge(false)
+            }
+            val manager = getSystemService(android.app.NotificationManager::class.java)
+            manager?.createNotificationChannel(channel)
+        }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {

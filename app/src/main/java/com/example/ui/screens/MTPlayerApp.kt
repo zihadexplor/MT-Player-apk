@@ -150,7 +150,7 @@ fun MTPlayerApp(
             modifier = Modifier
                 .fillMaxSize()
                 .testTag("app_root_scaffold"),
-            containerColor = DarkBackground,
+            containerColor = androidx.compose.material3.MaterialTheme.colorScheme.background,
             topBar = {
                 if (!isSubpage) {
                     MTTopBar(

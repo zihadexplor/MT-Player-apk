@@ -2,8 +2,10 @@ package com.example.ui.screens.video
 
 import android.app.Activity
 import android.app.PictureInPictureParams
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.media.AudioManager
@@ -17,6 +19,8 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
+import kotlin.math.roundToInt
+import kotlinx.coroutines.Job
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -26,6 +30,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -65,7 +70,6 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.example.data.model.VideoItem
-import com.example.ui.theme.SpotifyGreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -82,6 +86,7 @@ fun VideoPlayerModal(
     val activity = context as? Activity
     val audioManager = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
     val maxVolume = remember { audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC) }
+    val safeMaxVolume = if (maxVolume > 0) maxVolume else 1
 
     // Playback state
     var isPlaying by remember { mutableStateOf(true) }
@@ -112,7 +117,10 @@ fun VideoPlayerModal(
     var externalSubtitleName by remember { mutableStateOf<String?>(null) }
     var subtitleDelayMs by remember { mutableLongStateOf(0L) }
 
-    // HUD States
+    // HUD States & Auto-hide Jobs
+    var volumeHideJob by remember { mutableStateOf<Job?>(null) }
+    var brightnessHideJob by remember { mutableStateOf<Job?>(null) }
+
     var isBrightnessHUDVisible by remember { mutableStateOf(false) }
     var currentBrightness by remember {
         val initialWin = activity?.window?.attributes?.screenBrightness ?: -1.0f
@@ -122,6 +130,39 @@ fun VideoPlayerModal(
     var isVolumeHUDVisible by remember { mutableStateOf(false) }
     var currentVolumeLevel by remember {
         mutableIntStateOf(audioManager.getStreamVolume(AudioManager.STREAM_MUSIC))
+    }
+    var currentVolumeRatio by remember {
+        val currentVol = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+        mutableFloatStateOf((currentVol.toFloat() / safeMaxVolume.toFloat()).coerceIn(0f, 1f))
+    }
+
+    // Listen for physical volume button presses and system volume changes
+    DisposableEffect(context) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(c: Context?, intent: Intent?) {
+                if (intent?.action == "android.media.VOLUME_CHANGED_ACTION") {
+                    val streamType = intent.getIntExtra("android.media.EXTRA_VOLUME_STREAM_TYPE", -1)
+                    if (streamType == AudioManager.STREAM_MUSIC || streamType == -1) {
+                        val currentVol = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+                        currentVolumeLevel = currentVol
+                        currentVolumeRatio = (currentVol.toFloat() / safeMaxVolume.toFloat()).coerceIn(0f, 1f)
+                        isVolumeHUDVisible = true
+                        volumeHideJob?.cancel()
+                        volumeHideJob = coroutineScope.launch {
+                            delay(1200L)
+                            isVolumeHUDVisible = false
+                        }
+                    }
+                }
+            }
+        }
+        val filter = IntentFilter("android.media.VOLUME_CHANGED_ACTION")
+        context.registerReceiver(receiver, filter)
+        onDispose {
+            try {
+                context.unregisterReceiver(receiver)
+            } catch (_: Exception) {}
+        }
     }
 
     var isScrubHUDVisible by remember { mutableStateOf(false) }
@@ -456,21 +497,34 @@ fun VideoPlayerModal(
                         screenBrightness = newBrightness
                     }
                     isBrightnessHUDVisible = true
+                    brightnessHideJob?.cancel()
                 },
                 onVolumeDelta = { delta ->
-                    val deltaSteps = (delta * maxVolume).toInt()
-                    val newVol = (currentVolumeLevel + deltaSteps).coerceIn(0, maxVolume)
-                    if (newVol != currentVolumeLevel) {
-                        currentVolumeLevel = newVol
-                        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVol, 0)
+                    // delta is -deltaY / height.
+                    // Sensitivity factor 1.25f ensures smooth, continuous MX-Player-like volume control
+                    val newRatio = (currentVolumeRatio + delta * 1.25f).coerceIn(0f, 1f)
+                    currentVolumeRatio = newRatio
+                    val targetVol = (newRatio * safeMaxVolume).roundToInt().coerceIn(0, safeMaxVolume)
+                    if (targetVol != currentVolumeLevel) {
+                        currentVolumeLevel = targetVol
+                        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, targetVol, 0)
                     }
                     isVolumeHUDVisible = true
+                    volumeHideJob?.cancel()
                 },
                 onGestureEnd = {
+                    volumeHideJob?.cancel()
+                    volumeHideJob = coroutineScope.launch {
+                        delay(1200L)
+                        isVolumeHUDVisible = false
+                    }
+                    brightnessHideJob?.cancel()
+                    brightnessHideJob = coroutineScope.launch {
+                        delay(1200L)
+                        isBrightnessHUDVisible = false
+                    }
                     coroutineScope.launch {
                         delay(900L)
-                        isBrightnessHUDVisible = false
-                        isVolumeHUDVisible = false
                         isScrubHUDVisible = false
                     }
                 },
@@ -490,7 +544,7 @@ fun VideoPlayerModal(
                 modifier = Modifier
                     .size(54.dp)
                     .align(Alignment.Center),
-                color = SpotifyGreen,
+                color = MaterialTheme.colorScheme.primary,
                 strokeWidth = 3.dp
             )
         }
@@ -506,7 +560,8 @@ fun VideoPlayerModal(
 
         VolumeHUD(
             volumeLevel = currentVolumeLevel,
-            maxVolume = maxVolume,
+            maxVolume = safeMaxVolume,
+            volumeRatio = currentVolumeRatio,
             isVisible = isVolumeHUDVisible,
             modifier = Modifier
                 .align(Alignment.CenterEnd)

@@ -154,21 +154,27 @@ class MusicPlayerManager(
         try {
             val intent = Intent(context, PlaybackService::class.java)
             context.startService(intent)
-        } catch (e: Exception) {
-            // Android 8+ might require startForegroundService when in background, handled in playTrack
+        } catch (_: Exception) {
+            // Service will be started when playback begins
         }
     }
 
     private fun ensureServiceRunning() {
         try {
             val intent = Intent(context, PlaybackService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
+            // Starting via startService is valid while the app is in the foreground and avoids
+            // Android's strict 5-second startForeground deadline. MediaSessionService automatically
+            // promotes itself to foreground once playback starts.
+            context.startService(intent)
+        } catch (_: Exception) {
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    val intent = Intent(context, PlaybackService::class.java)
+                    context.startForegroundService(intent)
+                }
+            } catch (_: Exception) {
+                // Ignore fallback failure
             }
-        } catch (e: Exception) {
-            // Fallback
         }
     }
 

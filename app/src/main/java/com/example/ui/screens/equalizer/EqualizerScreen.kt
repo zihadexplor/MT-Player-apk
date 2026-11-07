@@ -133,12 +133,12 @@ fun EqualizerScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = DarkSurface,
-                    titleContentColor = TextPrimary
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         },
-        containerColor = DarkBackground
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
@@ -154,10 +154,10 @@ fun EqualizerScreen(
                         .fillMaxWidth()
                         .testTag("equalizer_master_card"),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = DarkSurfaceContainerHigh),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                     border = androidx.compose.foundation.BorderStroke(
                         1.dp,
-                        if (state.isEnabled) SpotifyGreen.copy(alpha = 0.6f) else DarkOutline
+                        if (state.isEnabled) MaterialTheme.colorScheme.primary.copy(alpha = 0.6f) else MaterialTheme.colorScheme.outlineVariant
                     )
                 ) {
                     Row(
@@ -173,14 +173,14 @@ fun EqualizerScreen(
                                     .size(42.dp)
                                     .clip(CircleShape)
                                     .background(
-                                        if (state.isEnabled) SpotifyGreen else DarkSurfaceVariant
+                                        if (state.isEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
                                     ),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.GraphicEq,
                                     contentDescription = null,
-                                    tint = if (state.isEnabled) Color.Black else TextSecondary,
+                                    tint = if (state.isEnabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(22.dp)
                                 )
                             }
@@ -190,12 +190,12 @@ fun EqualizerScreen(
                                     text = "Audio Equalizer Engine",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = TextPrimary
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
                                     text = if (state.isEnabled) "Active • Attached to Media Session" else "Bypassed (Flat Output)",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = if (state.isEnabled) SpotifyGreen else TextTertiary
+                                    color = if (state.isEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                                 )
                             }
                         }
@@ -204,10 +204,10 @@ fun EqualizerScreen(
                             checked = state.isEnabled,
                             onCheckedChange = onToggleEnabled,
                             colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.Black,
-                                checkedTrackColor = SpotifyGreen,
-                                uncheckedThumbColor = TextTertiary,
-                                uncheckedTrackColor = DarkSurfaceVariant
+                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primary,
+                                uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
                             ),
                             modifier = Modifier.testTag("equalizer_master_switch")
                         )
@@ -220,8 +220,8 @@ fun EqualizerScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = DarkSurfaceContainerHigh),
-                    border = androidx.compose.foundation.BorderStroke(0.5.dp, DarkOutline)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                    border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(
@@ -232,14 +232,14 @@ fun EqualizerScreen(
                             Text(
                                 text = "FREQUENCY RESPONSE CURVE",
                                 style = MaterialTheme.typography.labelMedium,
-                                color = SpotifyGreen,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.sp
                             )
                             Text(
                                 text = state.currentPreset,
                                 style = MaterialTheme.typography.labelMedium,
-                                color = TextPrimary,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -253,7 +253,7 @@ fun EqualizerScreen(
                                 .fillMaxWidth()
                                 .height(120.dp)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(DarkBackground)
+                                .background(MaterialTheme.colorScheme.surfaceContainer)
                         )
                     }
                 }
@@ -282,17 +282,17 @@ fun EqualizerScreen(
                                     .clip(RoundedCornerShape(20.dp))
                                     .clickable { onPresetSelect(preset) }
                                     .testTag("preset_chip_$preset"),
-                                color = if (isSelected) SpotifyGreen else DarkSurfaceVariant,
+                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                                 border = androidx.compose.foundation.BorderStroke(
                                     0.5.dp,
-                                    if (isSelected) SpotifyGreen else DarkOutline
+                                    if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
                                 )
                             ) {
                                 Text(
                                     text = preset,
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (isSelected) Color.Black else TextPrimary,
+                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
                                 )
                             }
@@ -469,8 +469,8 @@ fun BandSliderCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkSurfaceContainerHigh),
-        border = androidx.compose.foundation.BorderStroke(0.5.dp, DarkOutlineVariant)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Row(
             modifier = Modifier
@@ -481,14 +481,14 @@ fun BandSliderCard(
             // Frequency label badge
             Surface(
                 shape = RoundedCornerShape(8.dp),
-                color = if (isEnabled) SpotifyGreen.copy(alpha = 0.15f) else DarkSurfaceVariant,
+                color = if (isEnabled) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
                 modifier = Modifier.width(62.dp)
             ) {
                 Text(
                     text = band.displayFrequency,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
-                    color = if (isEnabled) SpotifyGreen else TextSecondary,
+                    color = if (isEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     modifier = Modifier.padding(vertical = 6.dp)
                 )
@@ -504,9 +504,9 @@ fun BandSliderCard(
                 valueRange = band.minLevelMb.toFloat()..band.maxLevelMb.toFloat(),
                 enabled = isEnabled,
                 colors = SliderDefaults.colors(
-                    thumbColor = if (isEnabled) SpotifyGreen else TextTertiary,
-                    activeTrackColor = if (isEnabled) SpotifyGreen else DarkSurfaceVariant,
-                    inactiveTrackColor = DarkSurfaceVariant
+                    thumbColor = if (isEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                    activeTrackColor = if (isEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                    inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
                 ),
                 modifier = Modifier
                     .weight(1f)
@@ -520,7 +520,7 @@ fun BandSliderCard(
                 text = band.displayLevel,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
-                color = if (isEnabled && band.levelMb != 0.toShort()) SpotifyGreenBright else TextTertiary,
+                color = if (isEnabled && band.levelMb != 0.toShort()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
                 modifier = Modifier.width(52.dp),
                 textAlign = androidx.compose.ui.text.style.TextAlign.End
             )
@@ -542,8 +542,8 @@ fun EffectSliderCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkSurfaceContainerHigh),
-        border = androidx.compose.foundation.BorderStroke(0.5.dp, DarkOutlineVariant)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(
@@ -557,14 +557,14 @@ fun EffectSliderCard(
                             .size(36.dp)
                             .clip(RoundedCornerShape(8.dp))
                             .background(
-                                if (isEnabled && value > 0) SpotifyGreen.copy(alpha = 0.2f) else DarkSurfaceVariant
+                                if (isEnabled && value > 0) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant
                             ),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = icon,
                             contentDescription = null,
-                            tint = if (isEnabled && value > 0) SpotifyGreen else TextTertiary,
+                            tint = if (isEnabled && value > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -574,12 +574,12 @@ fun EffectSliderCard(
                             text = title,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = subtitle,
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -589,7 +589,7 @@ fun EffectSliderCard(
                     text = "$percentage%",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = if (isEnabled && value > 0) SpotifyGreenBright else TextTertiary
+                    color = if (isEnabled && value > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                 )
             }
 
@@ -601,9 +601,9 @@ fun EffectSliderCard(
                 valueRange = 0f..maxValue.toFloat(),
                 enabled = isEnabled,
                 colors = SliderDefaults.colors(
-                    thumbColor = if (isEnabled) SpotifyGreen else TextTertiary,
-                    activeTrackColor = if (isEnabled) SpotifyGreen else DarkSurfaceVariant,
-                    inactiveTrackColor = DarkSurfaceVariant
+                    thumbColor = if (isEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                    activeTrackColor = if (isEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                    inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
                 ),
                 modifier = Modifier
                     .fillMaxWidth()

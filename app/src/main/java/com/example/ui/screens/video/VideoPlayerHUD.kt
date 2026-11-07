@@ -107,6 +107,7 @@ fun BrightnessHUD(
 fun VolumeHUD(
     volumeLevel: Int,
     maxVolume: Int,
+    volumeRatio: Float = if (maxVolume > 0) (volumeLevel.toFloat() / maxVolume.toFloat()).coerceIn(0f, 1f) else 0f,
     isVisible: Boolean,
     modifier: Modifier = Modifier
 ) {
@@ -116,13 +117,12 @@ fun VolumeHUD(
         exit = fadeOut() + scaleOut(targetScale = 0.85f),
         modifier = modifier
     ) {
-        val safeMax = if (maxVolume > 0) maxVolume else 1
-        val ratio = (volumeLevel.toFloat() / safeMax.toFloat()).coerceIn(0f, 1f)
-        val percentage = (ratio * 100).toInt()
+        val safeRatio = volumeRatio.coerceIn(0f, 1f)
+        val percentage = kotlin.math.round(safeRatio * 100).toInt()
 
         val icon = when {
-            volumeLevel == 0 -> Icons.AutoMirrored.Filled.VolumeMute
-            ratio < 0.5f -> Icons.AutoMirrored.Filled.VolumeDown
+            percentage == 0 -> Icons.AutoMirrored.Filled.VolumeMute
+            safeRatio < 0.5f -> Icons.AutoMirrored.Filled.VolumeDown
             else -> Icons.AutoMirrored.Filled.VolumeUp
         }
 
@@ -140,24 +140,24 @@ fun VolumeHUD(
                 Icon(
                     imageVector = icon,
                     contentDescription = "Volume",
-                    tint = SpotifyGreen,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(32.dp)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "$percentage%",
                     style = MaterialTheme.typography.titleMedium,
-                    color = TextPrimary,
+                    color = Color.White,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 LinearProgressIndicator(
-                    progress = { ratio },
+                    progress = { safeRatio },
                     modifier = Modifier
                         .width(90.dp)
                         .height(6.dp)
                         .clip(RoundedCornerShape(3.dp)),
-                    color = SpotifyGreen,
+                    color = MaterialTheme.colorScheme.primary,
                     trackColor = Color.White.copy(alpha = 0.25f),
                 )
             }

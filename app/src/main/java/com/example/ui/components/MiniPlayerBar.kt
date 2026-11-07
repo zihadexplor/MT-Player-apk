@@ -79,9 +79,9 @@ fun MiniPlayerBar(
                     .clip(RoundedCornerShape(12.dp))
                     .clickable { onClick() }
                     .testTag("mini_player_bar"),
-                color = DarkSurfaceContainerHigh,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
                 tonalElevation = 6.dp,
-                border = androidx.compose.foundation.BorderStroke(1.dp, DarkOutline)
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
             ) {
                 Column {
                     // Accurate Playback progress indicator line
@@ -90,8 +90,8 @@ fun MiniPlayerBar(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(2.5.dp),
-                        color = SpotifyGreen,
-                        trackColor = Color(0x331DB954)
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
                     )
 
                     Row(
@@ -105,7 +105,7 @@ fun MiniPlayerBar(
                             modifier = Modifier
                                 .size(44.dp)
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(SpotifyGreen.copy(alpha = 0.2f)),
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
                             contentAlignment = Alignment.Center
                         ) {
                             if (!track.albumArtUri.isNullOrBlank()) {
@@ -119,7 +119,7 @@ fun MiniPlayerBar(
                                 Icon(
                                     imageVector = Icons.Default.MusicNote,
                                     contentDescription = null,
-                                    tint = SpotifyGreen,
+                                    tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(24.dp)
                                 )
                             }
@@ -137,14 +137,14 @@ fun MiniPlayerBar(
                                 fontWeight = FontWeight.SemiBold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
-                                color = TextPrimary
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
                                 text = track.artist,
                                 style = MaterialTheme.typography.bodySmall,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
-                                color = TextSecondary
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
 
@@ -159,7 +159,7 @@ fun MiniPlayerBar(
                             Icon(
                                 imageVector = Icons.Default.SkipPrevious,
                                 contentDescription = "Previous Track",
-                                tint = TextPrimary,
+                                tint = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.size(22.dp)
                             )
                         }
@@ -171,13 +171,13 @@ fun MiniPlayerBar(
                                 .minimumInteractiveComponentSize()
                                 .size(40.dp)
                                 .clip(CircleShape)
-                                .background(SpotifyGreen)
+                                .background(MaterialTheme.colorScheme.primary)
                                 .testTag("mini_player_play_pause_button")
                         ) {
                             Icon(
                                 imageVector = if (playbackState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                                 contentDescription = if (playbackState.isPlaying) "Pause" else "Play",
-                                tint = Color.Black,
+                                tint = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.size(22.dp)
                             )
                         }
@@ -193,7 +193,7 @@ fun MiniPlayerBar(
                             Icon(
                                 imageVector = Icons.Default.SkipNext,
                                 contentDescription = "Next Track",
-                                tint = TextPrimary,
+                                tint = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.size(22.dp)
                             )
                         }

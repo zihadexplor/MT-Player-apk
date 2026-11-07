@@ -87,11 +87,14 @@ fun MTPlayerTheme(
     val accent = parseAccentColor(accentColorHex)
 
     val colorScheme = when {
-        themeMode.equals("AMOLED", ignoreCase = true) || (themeMode.equals("DARK", ignoreCase = true) && pureBlackAmoled) -> {
+        themeMode.equals("AMOLED", ignoreCase = true) -> {
             createAmoledColorScheme(accent)
         }
         themeMode.equals("LIGHT", ignoreCase = true) -> {
             createLightColorScheme(accent)
+        }
+        themeMode.equals("DARK", ignoreCase = true) -> {
+            createDarkColorScheme(accent)
         }
         themeMode.equals("SYSTEM", ignoreCase = true) -> {
             if (isSystemDark) {

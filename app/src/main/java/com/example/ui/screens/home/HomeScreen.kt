@@ -100,12 +100,12 @@ fun HomeScreen(
                             text = greeting,
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "Offline Player • Background Audio Active",
                             style = MaterialTheme.typography.bodySmall,
-                            color = SpotifyGreen
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -126,7 +126,7 @@ fun HomeScreen(
                         text = "Quick Navigation",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary,
+                        color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.padding(bottom = 10.dp)
                     )
 
@@ -185,13 +185,13 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(imageVector = Icons.Default.History, contentDescription = null, tint = SpotifyGreen, modifier = Modifier.size(20.dp))
+                        Icon(imageVector = Icons.Default.History, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "Recently Played",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -214,13 +214,13 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(imageVector = Icons.Default.TrendingUp, contentDescription = null, tint = SpotifyGreen, modifier = Modifier.size(20.dp))
+                        Icon(imageVector = Icons.Default.TrendingUp, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "Most Played",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -247,12 +247,12 @@ fun HomeScreen(
                         text = "Device Music",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = "See all",
                         style = MaterialTheme.typography.labelMedium,
-                        color = SpotifyGreen,
+                        color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
                             .clickable { onNavigateToMusic() }
                             .padding(4.dp)
@@ -293,12 +293,12 @@ fun HomeScreen(
                         text = "Device Videos",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = "See all",
                         style = MaterialTheme.typography.labelMedium,
-                        color = SpotifyGreen,
+                        color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
                             .clickable { onNavigateToVideos() }
                             .padding(4.dp)
@@ -311,8 +311,8 @@ fun HomeScreen(
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = DarkSurfaceContainerHigh),
-                        border = androidx.compose.foundation.BorderStroke(0.5.dp, DarkOutline)
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                        border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
                     ) {
                         Column(
                             modifier = Modifier.padding(18.dp),
@@ -321,14 +321,14 @@ fun HomeScreen(
                             Icon(
                                 imageVector = Icons.Default.Videocam,
                                 contentDescription = null,
-                                tint = TextTertiary,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(32.dp)
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
                                 text = "No local video files found",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = TextSecondary
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -359,8 +359,8 @@ fun QuickAccessCard(
             .clip(RoundedCornerShape(12.dp))
             .clickable { onClick() }
             .testTag(testTag),
-        color = DarkSurfaceContainerHigh,
-        border = androidx.compose.foundation.BorderStroke(0.5.dp, DarkOutline)
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -370,13 +370,13 @@ fun QuickAccessCard(
                 modifier = Modifier
                     .size(38.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(SpotifyGreen.copy(alpha = 0.15f)),
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = SpotifyGreen,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -385,7 +385,7 @@ fun QuickAccessCard(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleSmall,
-                    color = TextPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -393,7 +393,7 @@ fun QuickAccessCard(
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 11.sp
                 )
             }

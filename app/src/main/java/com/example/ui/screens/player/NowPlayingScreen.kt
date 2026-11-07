@@ -124,9 +124,9 @@ fun NowPlayingScreen(
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        DarkSurfaceVariant,
-                        DarkBackground,
-                        Color(0xFF0A0C0B)
+                        MaterialTheme.colorScheme.surfaceVariant,
+                        MaterialTheme.colorScheme.background,
+                        MaterialTheme.colorScheme.surface
                     )
                 )
             )
@@ -278,7 +278,7 @@ fun NowPlayingScreen(
                                 .clip(RoundedCornerShape(8.dp))
                                 .clickable { onPlayQueueIndex(index) }
                                 .testTag("queue_item_$index"),
-                            color = if (isCurrent) SpotifyGreen.copy(alpha = 0.15f) else DarkSurfaceContainerHigh
+                            color = if (isCurrent) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceContainerHigh
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
@@ -288,7 +288,7 @@ fun NowPlayingScreen(
                                     Icon(
                                         imageVector = Icons.Default.PlayArrow,
                                         contentDescription = "Playing",
-                                        tint = SpotifyGreen,
+                                        tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(18.dp)
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
@@ -296,7 +296,7 @@ fun NowPlayingScreen(
                                     Text(
                                         text = "${index + 1}",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = TextTertiary,
+                                        color = MaterialTheme.colorScheme.outline,
                                         modifier = Modifier.width(22.dp)
                                     )
                                 }
@@ -305,14 +305,14 @@ fun NowPlayingScreen(
                                     Text(
                                         text = item.title,
                                         style = MaterialTheme.typography.titleSmall,
-                                        color = if (isCurrent) SpotifyGreenBright else TextPrimary,
+                                        color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
                                     Text(
                                         text = item.artist,
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = TextSecondary,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
@@ -339,7 +339,7 @@ fun NowPlayingScreen(
                         .padding(horizontal = 12.dp)
                         .shadow(16.dp, RoundedCornerShape(16.dp))
                         .clip(RoundedCornerShape(16.dp))
-                        .background(DarkSurfaceVariant)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                         .testTag("now_playing_artwork_box"),
                     contentAlignment = Alignment.Center
                 ) {

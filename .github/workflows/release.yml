@@ -47,8 +47,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Make gradlew executable
-        run: chmod +x ./gradlew
+      - name: Make gradlew and scripts executable
+        run: |
+          chmod +x ./gradlew
+          chmod +x .github/scripts/*.sh 2>/dev/null || true
 
       - name: Configure git identity
         run: |

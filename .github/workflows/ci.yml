@@ -24,8 +24,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Make gradlew executable
-        run: chmod +x ./gradlew
+      - name: Make gradlew and scripts executable
+        run: |
+          chmod +x ./gradlew
+          chmod +x .github/scripts/*.sh 2>/dev/null || true
 
       - name: Validate Gradle wrapper
         uses: gradle/actions/wrapper-validation@v4
@@ -40,13 +42,19 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Assemble debug APK
-        run: ./gradlew assembleDebug
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug
 
       - name: Unit tests
-        run: ./gradlew testDebugUnitTest
+        run: |
+          chmod +x ./gradlew
+          ./gradlew testDebugUnitTest
 
       - name: Lint
-        run: ./gradlew lintDebug
+        run: |
+          chmod +x ./gradlew
+          ./gradlew lintDebug
         continue-on-error: true
 
       - name: Version scripts dry-run

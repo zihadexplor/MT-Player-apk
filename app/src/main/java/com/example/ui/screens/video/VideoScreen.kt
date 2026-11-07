@@ -147,7 +147,7 @@ fun VideoScreen(
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = "Search",
-                        tint = SpotifyGreen,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
                 },
@@ -162,7 +162,7 @@ fun VideoScreen(
                             Icon(
                                 imageVector = Icons.Default.Close,
                                 contentDescription = "Clear search",
-                                tint = TextSecondary,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
@@ -171,12 +171,12 @@ fun VideoScreen(
                 singleLine = true,
                 shape = RoundedCornerShape(24.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = SpotifyGreen,
-                    unfocusedBorderColor = DarkOutline,
-                    focusedContainerColor = DarkSurfaceContainerHigh,
-                    unfocusedContainerColor = DarkSurfaceContainerHigh,
-                    focusedTextColor = TextPrimary,
-                    unfocusedTextColor = TextPrimary
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -188,14 +188,14 @@ fun VideoScreen(
         if (selectedFolder == null) {
             ScrollableTabRow(
                 selectedTabIndex = activeTab,
-                containerColor = DarkSurface,
-                contentColor = SpotifyGreen,
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary,
                 edgePadding = 16.dp,
                 indicator = { tabPositions ->
                     if (activeTab in tabPositions.indices) {
                         TabRowDefaults.SecondaryIndicator(
                             Modifier.tabIndicatorOffset(tabPositions[activeTab]),
-                            color = SpotifyGreen,
+                            color = MaterialTheme.colorScheme.primary,
                             height = 3.dp
                         )
                     }
@@ -339,13 +339,13 @@ fun VideoScreen(
                                             Text(
                                                 text = label,
                                                 fontWeight = if (currentSort == sort) FontWeight.Bold else FontWeight.Normal,
-                                                color = if (currentSort == sort) SpotifyGreen else Color.Unspecified
+                                                color = if (currentSort == sort) MaterialTheme.colorScheme.primary else Color.Unspecified
                                             )
                                             if (currentSort == sort) {
                                                 Icon(
                                                     imageVector = Icons.Default.Check,
                                                     contentDescription = null,
-                                                    tint = SpotifyGreen,
+                                                    tint = MaterialTheme.colorScheme.primary,
                                                     modifier = Modifier.size(16.dp)
                                                 )
                                             }
@@ -452,7 +452,7 @@ fun VideoScreen(
                                             color = TextPrimary
                                         )
                                         TextButton(onClick = { onTabChange(2) }) {
-                                            Text("See All", color = SpotifyGreen, fontSize = 12.sp)
+                                            Text("See All", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
                                         }
                                     }
 
@@ -491,7 +491,7 @@ fun VideoScreen(
                         // Hidden folders management bar
                         if (hiddenFolderPaths.isNotEmpty()) {
                             Surface(
-                                color = DarkSurfaceVariant,
+                                color = MaterialTheme.colorScheme.surfaceVariant,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 16.dp, vertical = 6.dp)
@@ -507,21 +507,21 @@ fun VideoScreen(
                                         Icon(
                                             imageVector = Icons.Default.VisibilityOff,
                                             contentDescription = null,
-                                            tint = SpotifyGreen,
+                                            tint = MaterialTheme.colorScheme.primary,
                                             modifier = Modifier.size(18.dp)
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text(
                                             text = "${hiddenFolderPaths.size} hidden folder(s)",
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = TextPrimary,
+                                            color = MaterialTheme.colorScheme.onSurface,
                                             fontWeight = FontWeight.SemiBold
                                         )
                                     }
                                     Text(
                                         text = "Manage",
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = SpotifyGreen,
+                                        color = MaterialTheme.colorScheme.primary,
                                         fontWeight = FontWeight.Bold
                                     )
                                 }

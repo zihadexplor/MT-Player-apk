@@ -5,6 +5,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -18,6 +19,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        volumeControlStream = android.media.AudioManager.STREAM_MUSIC
 
         // Background update check on app open (once per process; restores running downloads).
         UpdateManager.get(this).onAppStart(autoCheckAllowedForBuild = BuildConfig.AUTO_UPDATE_CHECK)
@@ -36,7 +39,12 @@ class MainActivity : ComponentActivity() {
                 accentColorHex = accentHex,
                 pureBlackAmoled = amoled
             ) {
-                MTPlayerApp(viewModel = viewModel)
+                androidx.compose.material3.Surface(
+                    modifier = androidx.compose.ui.Modifier.fillMaxSize(),
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.background
+                ) {
+                    MTPlayerApp(viewModel = viewModel)
+                }
             }
         }
     }

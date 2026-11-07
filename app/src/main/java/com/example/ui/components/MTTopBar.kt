@@ -58,7 +58,7 @@ fun MTTopBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(DarkSurface)
+            .background(MaterialTheme.colorScheme.surface)
             .statusBarsPadding()
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
@@ -77,14 +77,14 @@ fun MTTopBar(
                         Text(
                             text = "Search tracks, videos, artists...",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = TextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Search,
                             contentDescription = "Search",
-                            tint = SpotifyGreen
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     },
                     trailingIcon = {
@@ -98,7 +98,7 @@ fun MTTopBar(
                                 Icon(
                                     imageVector = Icons.Default.Close,
                                     contentDescription = "Clear search",
-                                    tint = TextSecondary
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -110,8 +110,8 @@ fun MTTopBar(
                         unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                     )
                 )
 
@@ -129,7 +129,7 @@ fun MTTopBar(
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Close search",
-                        tint = TextPrimary
+                        tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -148,7 +148,7 @@ fun MTTopBar(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = TextPrimary
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                     Spacer(modifier = Modifier.width(4.dp))
@@ -157,7 +157,7 @@ fun MTTopBar(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleLarge,
-                    color = TextPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f)
                 )
 
@@ -171,7 +171,7 @@ fun MTTopBar(
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = "Search offline media",
-                        tint = TextPrimary
+                        tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
@@ -185,7 +185,7 @@ fun MTTopBar(
                     Icon(
                         imageVector = Icons.Default.Refresh,
                         contentDescription = "Rescan offline storage",
-                        tint = TextPrimary
+                        tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
@@ -200,7 +200,7 @@ fun MTTopBar(
                         Icon(
                             imageVector = Icons.Default.Settings,
                             contentDescription = "Open Settings",
-                            tint = TextPrimary
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }

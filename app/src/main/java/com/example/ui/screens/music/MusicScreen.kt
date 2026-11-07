@@ -129,14 +129,14 @@ fun MusicScreen(
         // Tab Row
         ScrollableTabRow(
             selectedTabIndex = activeTab,
-            containerColor = DarkSurface,
-            contentColor = SpotifyGreen,
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.primary,
             edgePadding = 16.dp,
             indicator = { tabPositions ->
                 if (activeTab < tabPositions.size) {
                     TabRowDefaults.SecondaryIndicator(
                         Modifier.tabIndicatorOffset(tabPositions[activeTab]),
-                        color = SpotifyGreen,
+                        color = MaterialTheme.colorScheme.primary,
                         height = 3.dp
                     )
                 }
@@ -152,7 +152,7 @@ fun MusicScreen(
                             text = title,
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = if (activeTab == index) FontWeight.Bold else FontWeight.Normal,
-                            color = if (activeTab == index) TextPrimary else TextSecondary
+                            color = if (activeTab == index) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     },
                     modifier = Modifier.testTag("music_tab_$index")
@@ -192,7 +192,7 @@ fun MusicScreen(
                         Icon(
                             imageVector = if (isSelectionMode) Icons.Default.CheckCircle else Icons.Default.SelectAll,
                             contentDescription = "Select Mode",
-                            tint = if (isSelectionMode) SpotifyGreen else TextSecondary,
+                            tint = if (isSelectionMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -204,7 +204,7 @@ fun MusicScreen(
                         Row(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(DarkSurfaceVariant)
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
                                 .clickable { showSortMenu = true }
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                                 .testTag("track_sort_dropdown_button"),
@@ -213,7 +213,7 @@ fun MusicScreen(
                             Icon(
                                 imageVector = Icons.Default.Sort,
                                 contentDescription = "Sort Options",
-                                tint = SpotifyGreen,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(14.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
@@ -228,7 +228,7 @@ fun MusicScreen(
                             Text(
                                 text = sortLabel,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = TextSecondary,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 11.sp
                             )
                         }
@@ -236,7 +236,7 @@ fun MusicScreen(
                         DropdownMenu(
                             expanded = showSortMenu,
                             onDismissRequest = { showSortMenu = false },
-                            modifier = Modifier.background(DarkSurfaceContainerHigh)
+                            modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh)
                         ) {
                             TrackSort.values().forEach { sortOption ->
                                 val label = when (sortOption) {
@@ -251,7 +251,7 @@ fun MusicScreen(
                                     text = {
                                         Text(
                                             text = label,
-                                            color = if (sortOption == currentSort) SpotifyGreen else TextPrimary
+                                            color = if (sortOption == currentSort) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                                         )
                                     },
                                     onClick = {
@@ -270,7 +270,7 @@ fun MusicScreen(
                         modifier = Modifier
                             .size(34.dp)
                             .clip(CircleShape)
-                            .background(SpotifyGreen)
+                            .background(MaterialTheme.colorScheme.primary)
                             .clickable {
                                 if (currentTrackList.isNotEmpty()) {
                                     val randomTrack = currentTrackList.random()
@@ -283,7 +283,7 @@ fun MusicScreen(
                         Icon(
                             imageVector = Icons.Default.Shuffle,
                             contentDescription = "Shuffle All",
-                            tint = Color.Black,
+                            tint = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -376,8 +376,8 @@ fun MusicScreen(
                                     }
                                     .testTag("album_card_${album.id}"),
                                 shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(containerColor = DarkSurfaceContainerHigh),
-                                border = androidx.compose.foundation.BorderStroke(0.5.dp, DarkOutlineVariant)
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                                border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
                             ) {
                                 Column(modifier = Modifier.padding(12.dp)) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -385,7 +385,7 @@ fun MusicScreen(
                                             modifier = Modifier
                                                 .size(54.dp)
                                                 .clip(RoundedCornerShape(8.dp))
-                                                .background(DarkSurfaceVariant),
+                                                .background(MaterialTheme.colorScheme.surfaceVariant),
                                             contentAlignment = Alignment.Center
                                         ) {
                                             if (!album.albumArtUri.isNullOrBlank()) {
@@ -399,7 +399,7 @@ fun MusicScreen(
                                                 Icon(
                                                     imageVector = Icons.Default.Album,
                                                     contentDescription = null,
-                                                    tint = SpotifyGreen,
+                                                    tint = MaterialTheme.colorScheme.primary,
                                                     modifier = Modifier.size(28.dp)
                                                 )
                                             }
@@ -442,7 +442,7 @@ fun MusicScreen(
                                                             onTrackClick(album.tracks.first(), album.tracks)
                                                         }
                                                     },
-                                                    colors = ButtonDefaults.buttonColors(containerColor = SpotifyGreen),
+                                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                                                     shape = RoundedCornerShape(16.dp),
                                                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                                                 ) {
@@ -508,8 +508,8 @@ fun MusicScreen(
                                     }
                                     .testTag("artist_card_${artist.name}"),
                                 shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(containerColor = DarkSurfaceContainerHigh),
-                                border = androidx.compose.foundation.BorderStroke(0.5.dp, DarkOutlineVariant)
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                                border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
                             ) {
                                 Column(modifier = Modifier.padding(12.dp)) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -517,13 +517,13 @@ fun MusicScreen(
                                             modifier = Modifier
                                                 .size(48.dp)
                                                 .clip(CircleShape)
-                                                .background(SpotifyGreen.copy(alpha = 0.2f)),
+                                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Icon(
                                                 imageVector = Icons.Default.Person,
                                                 contentDescription = null,
-                                                tint = SpotifyGreen,
+                                                tint = MaterialTheme.colorScheme.primary,
                                                 modifier = Modifier.size(26.dp)
                                             )
                                         }
@@ -563,7 +563,7 @@ fun MusicScreen(
                                                             onTrackClick(artist.tracks.first(), artist.tracks)
                                                         }
                                                     },
-                                                    colors = ButtonDefaults.buttonColors(containerColor = SpotifyGreen),
+                                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                                                     shape = RoundedCornerShape(16.dp),
                                                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                                                 ) {
@@ -629,8 +629,8 @@ fun MusicScreen(
                                     }
                                     .testTag("folder_card_${folder.name}"),
                                 shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(containerColor = DarkSurfaceContainerHigh),
-                                border = androidx.compose.foundation.BorderStroke(0.5.dp, DarkOutlineVariant)
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                                border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
                             ) {
                                 Column(modifier = Modifier.padding(12.dp)) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -638,13 +638,13 @@ fun MusicScreen(
                                             modifier = Modifier
                                                 .size(46.dp)
                                                 .clip(RoundedCornerShape(8.dp))
-                                                .background(SpotifyGreen.copy(alpha = 0.15f)),
+                                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Icon(
                                                 imageVector = Icons.Default.Folder,
                                                 contentDescription = null,
-                                                tint = SpotifyGreen,
+                                                tint = MaterialTheme.colorScheme.primary,
                                                 modifier = Modifier.size(24.dp)
                                             )
                                         }
@@ -684,7 +684,7 @@ fun MusicScreen(
                                                             onTrackClick(folder.tracks.first(), folder.tracks)
                                                         }
                                                     },
-                                                    colors = ButtonDefaults.buttonColors(containerColor = SpotifyGreen),
+                                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                                                     shape = RoundedCornerShape(16.dp),
                                                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                                                 ) {

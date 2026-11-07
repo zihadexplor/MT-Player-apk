@@ -129,8 +129,8 @@ fun StorageStatBanner(
             .fillMaxWidth()
             .testTag("storage_stat_banner"),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkSurfaceContainerHigh),
-        border = androidx.compose.foundation.BorderStroke(1.dp, DarkOutline)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Box(
             modifier = Modifier
@@ -138,7 +138,7 @@ fun StorageStatBanner(
                 .background(
                     Brush.horizontalGradient(
                         colors = listOf(
-                            SpotifyGreen.copy(alpha = 0.12f),
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
                             Color.Transparent
                         )
                     )
@@ -155,7 +155,7 @@ fun StorageStatBanner(
                         Text(
                             text = "OFFLINE VAULT",
                             style = MaterialTheme.typography.labelMedium,
-                            color = SpotifyGreen,
+                            color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp
                         )
@@ -163,7 +163,7 @@ fun StorageStatBanner(
                         Text(
                             text = "On-Device Media",
                             style = MaterialTheme.typography.titleMedium,
-                            color = TextPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -171,7 +171,7 @@ fun StorageStatBanner(
                     if (stats.isScanning) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(24.dp),
-                            color = SpotifyGreen,
+                            color = MaterialTheme.colorScheme.primary,
                             strokeWidth = 2.5.dp
                         )
                     } else {
@@ -181,13 +181,13 @@ fun StorageStatBanner(
                                 .minimumInteractiveComponentSize()
                                 .size(36.dp)
                                 .clip(CircleShape)
-                                .background(DarkSurfaceVariant)
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
                                 .testTag("banner_rescan_button")
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Refresh,
                                 contentDescription = "Rescan media",
-                                tint = SpotifyGreen,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
@@ -231,7 +231,7 @@ fun StatPill(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(10.dp),
-        color = DarkSurface
+        color = MaterialTheme.colorScheme.surface
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -240,7 +240,7 @@ fun StatPill(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = SpotifyGreen,
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(16.dp)
             )
             Spacer(modifier = Modifier.width(6.dp))
@@ -248,7 +248,7 @@ fun StatPill(
                 Text(
                     text = value,
                     style = MaterialTheme.typography.labelLarge,
-                    color = TextPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
@@ -281,8 +281,8 @@ fun TrackItemRow(
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
             .background(
-                if (isChecked) SpotifyGreen.copy(alpha = 0.25f)
-                else if (isSelected) SpotifyGreen.copy(alpha = 0.15f)
+                if (isChecked) MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
+                else if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                 else Color.Transparent
             )
             .combinedClickable(
@@ -305,9 +305,9 @@ fun TrackItemRow(
                 checked = isChecked,
                 onCheckedChange = onCheckedChange,
                 colors = CheckboxDefaults.colors(
-                    checkedColor = SpotifyGreen,
-                    uncheckedColor = TextTertiary,
-                    checkmarkColor = Color.Black
+                    checkedColor = MaterialTheme.colorScheme.primary,
+                    uncheckedColor = MaterialTheme.colorScheme.outline,
+                    checkmarkColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 modifier = Modifier.testTag("track_select_checkbox_${track.id}")
             )
@@ -320,8 +320,8 @@ fun TrackItemRow(
                 .size(46.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(
-                    if (isSelected) SpotifyGreen
-                    else DarkSurfaceContainerHigh
+                    if (isSelected) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.surfaceContainerHigh
                 ),
             contentAlignment = Alignment.Center
         ) {
@@ -336,7 +336,7 @@ fun TrackItemRow(
                 Icon(
                     imageVector = if (isSelected) Icons.Default.PlayArrow else Icons.Default.MusicNote,
                     contentDescription = null,
-                    tint = if (isSelected) Color.Black else SpotifyGreen,
+                    tint = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -351,7 +351,7 @@ fun TrackItemRow(
             Text(
                 text = track.title,
                 style = MaterialTheme.typography.titleMedium,
-                color = if (isSelected) SpotifyGreenBright else TextPrimary,
+                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -359,7 +359,7 @@ fun TrackItemRow(
             Text(
                 text = "${track.artist} • ${track.album}",
                 style = MaterialTheme.typography.bodySmall,
-                color = TextSecondary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -371,7 +371,7 @@ fun TrackItemRow(
         Text(
             text = formatDuration(track.durationMs),
             style = MaterialTheme.typography.bodySmall,
-            color = TextTertiary
+            color = MaterialTheme.colorScheme.outline
         )
 
         // Favorite icon
@@ -386,7 +386,7 @@ fun TrackItemRow(
                 Icon(
                     imageVector = if (track.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                     contentDescription = if (track.isFavorite) "Unfavorite" else "Favorite",
-                    tint = if (track.isFavorite) SpotifyGreen else TextTertiary,
+                    tint = if (track.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
                     modifier = Modifier.size(19.dp)
                 )
             }
@@ -427,8 +427,8 @@ fun VideoGridCard(
             .clickable { onVideoClick() }
             .testTag("video_item_${video.id}"),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkSurfaceContainerHigh),
-        border = androidx.compose.foundation.BorderStroke(0.5.dp, DarkOutlineVariant)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column {
             // Thumbnail container
@@ -436,7 +436,7 @@ fun VideoGridCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(16f / 9f)
-                    .background(DarkSurfaceVariant),
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
                 AsyncImage(
@@ -472,7 +472,7 @@ fun VideoGridCard(
                     Text(
                         text = video.resolution,
                         style = MaterialTheme.typography.bodySmall,
-                        color = SpotifyGreen,
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold,
                         fontSize = 10.sp,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -491,7 +491,7 @@ fun VideoGridCard(
                     Icon(
                         imageVector = if (video.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                         contentDescription = if (video.isFavorite) "Remove from favorites" else "Add to favorites",
-                        tint = if (video.isFavorite) SpotifyGreen else Color.White,
+                        tint = if (video.isFavorite) MaterialTheme.colorScheme.primary else Color.White,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -522,7 +522,7 @@ fun VideoGridCard(
                             .fillMaxWidth()
                             .height(3.5.dp)
                             .align(Alignment.BottomCenter),
-                        color = SpotifyGreen,
+                        color = MaterialTheme.colorScheme.primary,
                         trackColor = Color.White.copy(alpha = 0.25f)
                     )
                 }
@@ -616,8 +616,8 @@ fun VideoRowCard(
             .clickable { onVideoClick() }
             .testTag("video_row_${video.id}"),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkSurfaceContainerHigh),
-        border = androidx.compose.foundation.BorderStroke(0.5.dp, DarkOutlineVariant)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Row(
             modifier = Modifier
@@ -631,7 +631,7 @@ fun VideoRowCard(
                     .width(115.dp)
                     .aspectRatio(16f / 9f)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(DarkSurfaceVariant),
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
                 AsyncImage(
@@ -652,7 +652,7 @@ fun VideoRowCard(
                     Text(
                         text = video.resolution,
                         style = MaterialTheme.typography.bodySmall,
-                        color = SpotifyGreen,
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold,
                         fontSize = 9.sp,
                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
@@ -685,7 +685,7 @@ fun VideoRowCard(
                             .fillMaxWidth()
                             .height(3.dp)
                             .align(Alignment.BottomCenter),
-                        color = SpotifyGreen,
+                        color = MaterialTheme.colorScheme.primary,
                         trackColor = Color.White.copy(alpha = 0.25f)
                     )
                 }
@@ -720,7 +720,7 @@ fun VideoRowCard(
                     Text(
                         text = "Resume at ${formatDuration(video.playbackPositionMs)} ($pct%)",
                         style = MaterialTheme.typography.labelSmall,
-                        color = SpotifyGreen,
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -737,7 +737,7 @@ fun VideoRowCard(
                 Icon(
                     imageVector = if (video.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                     contentDescription = if (video.isFavorite) "Remove from favorites" else "Add to favorites",
-                    tint = if (video.isFavorite) SpotifyGreen else TextSecondary,
+                    tint = if (video.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -774,15 +774,15 @@ fun ContinueWatchingCard(
             .clickable { onResumeClick() }
             .testTag("continue_card_${video.id}"),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkSurfaceContainerHigh),
-        border = androidx.compose.foundation.BorderStroke(0.5.dp, SpotifyGreen.copy(alpha = 0.35f))
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f))
     ) {
         Column {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(110.dp)
-                    .background(DarkSurfaceVariant),
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
                 AsyncImage(
@@ -804,13 +804,13 @@ fun ContinueWatchingCard(
                     modifier = Modifier
                         .size(38.dp)
                         .clip(CircleShape)
-                        .background(SpotifyGreen),
+                        .background(MaterialTheme.colorScheme.primary),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.PlayArrow,
                         contentDescription = "Resume video",
-                        tint = Color.Black,
+                        tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -826,7 +826,7 @@ fun ContinueWatchingCard(
                     Text(
                         text = video.resolution,
                         style = MaterialTheme.typography.bodySmall,
-                        color = SpotifyGreen,
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold,
                         fontSize = 9.sp,
                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
@@ -842,7 +842,7 @@ fun ContinueWatchingCard(
                             .fillMaxWidth()
                             .height(4.dp)
                             .align(Alignment.BottomCenter),
-                        color = SpotifyGreen,
+                        color = MaterialTheme.colorScheme.primary,
                         trackColor = Color.White.copy(alpha = 0.3f)
                     )
                 }
@@ -854,7 +854,7 @@ fun ContinueWatchingCard(
                 Text(
                     text = video.title,
                     style = MaterialTheme.typography.titleSmall,
-                    color = TextPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -863,7 +863,7 @@ fun ContinueWatchingCard(
                 Text(
                     text = "Left off at ${formatDuration(video.playbackPositionMs)} ($pct%)",
                     style = MaterialTheme.typography.bodySmall,
-                    color = SpotifyGreen,
+                    color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 11.sp
                 )
@@ -886,8 +886,8 @@ fun VideoFolderCard(
             .clickable { onFolderClick() }
             .testTag("video_folder_${folder.id}"),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkSurfaceContainerHigh),
-        border = androidx.compose.foundation.BorderStroke(0.5.dp, DarkOutlineVariant)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Row(
             modifier = Modifier
@@ -899,13 +899,13 @@ fun VideoFolderCard(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(DarkSurfaceVariant),
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Folder,
                     contentDescription = null,
-                    tint = SpotifyGreen,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(26.dp)
                 )
             }
@@ -1048,7 +1048,7 @@ fun VideoDetailsDialog(
                 }
             }
         },
-        containerColor = DarkSurfaceContainerHigh,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         modifier = Modifier.testTag("video_details_dialog")
     )
 }
@@ -1102,7 +1102,7 @@ fun ManageHiddenFoldersDialog(
 
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
-                                color = DarkSurfaceVariant,
+                                color = MaterialTheme.colorScheme.surfaceVariant,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Row(
@@ -1116,13 +1116,13 @@ fun ManageHiddenFoldersDialog(
                                         Text(
                                             text = folderName,
                                             style = MaterialTheme.typography.titleSmall,
-                                            color = TextPrimary,
+                                            color = MaterialTheme.colorScheme.onSurface,
                                             fontWeight = FontWeight.SemiBold
                                         )
                                         Text(
                                             text = path,
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = TextTertiary,
+                                            color = MaterialTheme.colorScheme.outline,
                                             fontSize = 10.sp,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
@@ -1132,7 +1132,7 @@ fun ManageHiddenFoldersDialog(
                                         onClick = { onUnhideFolder(path) },
                                         modifier = Modifier.testTag("unhide_folder_$folderName")
                                     ) {
-                                        Text("Unhide", color = SpotifyGreen, fontWeight = FontWeight.Bold)
+                                        Text("Unhide", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
@@ -1148,25 +1148,25 @@ fun ManageHiddenFoldersDialog(
                         onUnhideAll()
                         onDismiss()
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = SpotifyGreen),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     modifier = Modifier.testTag("unhide_all_folders_btn")
                 ) {
-                    Text("Unhide All", color = Color.Black, fontWeight = FontWeight.Bold)
+                    Text("Unhide All", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
                 }
             } else {
                 TextButton(onClick = onDismiss) {
-                    Text("Close", color = SpotifyGreen)
+                    Text("Close", color = MaterialTheme.colorScheme.primary)
                 }
             }
         },
         dismissButton = {
             if (hiddenFolderPaths.isNotEmpty()) {
                 TextButton(onClick = onDismiss) {
-                    Text("Close", color = TextSecondary)
+                    Text("Close", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         },
-        containerColor = DarkSurfaceContainerHigh,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         modifier = Modifier.testTag("manage_hidden_folders_dialog")
     )
 }
@@ -1254,8 +1254,8 @@ fun PermissionPromptCard(
             .padding(16.dp)
             .testTag("permission_prompt_card"),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkSurfaceContainerHigh),
-        border = androidx.compose.foundation.BorderStroke(1.dp, SpotifyGreen.copy(alpha = 0.5f))
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -1265,14 +1265,14 @@ fun PermissionPromptCard(
                 Icon(
                     imageVector = Icons.Default.Security,
                     contentDescription = null,
-                    tint = SpotifyGreen,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
                     text = "Storage Access Required",
                     style = MaterialTheme.typography.titleMedium,
-                    color = TextPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -1282,7 +1282,7 @@ fun PermissionPromptCard(
             Text(
                 text = "MT Player operates 100% offline. Allow media access to scan and play your device's audio tracks and video clips.",
                 style = MaterialTheme.typography.bodySmall,
-                color = TextSecondary
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(modifier = Modifier.height(14.dp))
@@ -1290,12 +1290,12 @@ fun PermissionPromptCard(
             Button(
                 onClick = onRequestPermission,
                 shape = RoundedCornerShape(20.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = SpotifyGreen),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 modifier = Modifier.testTag("grant_permission_button")
             ) {
                 Text(
                     text = "Grant Media Access",
-                    color = Color.Black,
+                    color = MaterialTheme.colorScheme.onPrimary,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -1322,7 +1322,7 @@ fun SongActionBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = DarkSurfaceContainerHigh,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         modifier = modifier.testTag("song_action_bottom_sheet")
     ) {
         Column(
@@ -1339,7 +1339,7 @@ fun SongActionBottomSheet(
                     modifier = Modifier
                         .size(52.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(SpotifyGreen.copy(alpha = 0.2f)),
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
                     contentAlignment = Alignment.Center
                 ) {
                     if (!track.albumArtUri.isNullOrBlank()) {
@@ -1353,7 +1353,7 @@ fun SongActionBottomSheet(
                         Icon(
                             imageVector = Icons.Default.MusicNote,
                             contentDescription = null,
-                            tint = SpotifyGreen,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(28.dp)
                         )
                     }
@@ -1416,7 +1416,7 @@ fun SongActionBottomSheet(
             SheetActionRow(
                 title = if (track.isFavorite) "Remove from Favorites" else "Add to Favorites",
                 icon = if (track.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                iconTint = if (track.isFavorite) SpotifyGreen else TextPrimary,
+                iconTint = if (track.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                 onClick = {
                     onToggleFavorite()
                     onDismiss()
@@ -1506,10 +1506,10 @@ fun AddToPlaylistDialog(
                         singleLine = true,
                         placeholder = { Text("e.g. Road Trip", color = TextTertiary) },
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = SpotifyGreen,
-                            unfocusedBorderColor = DarkOutline,
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -1526,7 +1526,7 @@ fun AddToPlaylistDialog(
                                 .clip(RoundedCornerShape(8.dp))
                                 .clickable { isCreatingNew = true }
                                 .padding(vertical = 8.dp),
-                            color = SpotifyGreen.copy(alpha = 0.15f)
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                         ) {
                             Row(
                                 modifier = Modifier.padding(10.dp),
@@ -1535,7 +1535,7 @@ fun AddToPlaylistDialog(
                                 Icon(
                                     imageVector = Icons.Default.Add,
                                     contentDescription = null,
-                                    tint = SpotifyGreen,
+                                    tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(10.dp))
@@ -1543,7 +1543,7 @@ fun AddToPlaylistDialog(
                                     text = "New Playlist...",
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold,
-                                    color = SpotifyGreen
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                             }
                         }
@@ -1556,7 +1556,7 @@ fun AddToPlaylistDialog(
                                 .clip(RoundedCornerShape(8.dp))
                                 .clickable { onSelectPlaylist(playlist.id) }
                                 .padding(vertical = 4.dp),
-                            color = DarkSurfaceVariant
+                            color = MaterialTheme.colorScheme.surfaceVariant
                         ) {
                             Row(
                                 modifier = Modifier.padding(12.dp),
@@ -1565,7 +1565,7 @@ fun AddToPlaylistDialog(
                                 Icon(
                                     imageVector = Icons.Default.QueueMusic,
                                     contentDescription = null,
-                                    tint = TextSecondary,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
@@ -1573,12 +1573,12 @@ fun AddToPlaylistDialog(
                                     Text(
                                         text = playlist.name,
                                         style = MaterialTheme.typography.titleSmall,
-                                        color = TextPrimary
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Text(
                                         text = "${playlist.trackIds.size} songs",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = TextTertiary,
+                                        color = MaterialTheme.colorScheme.outline,
                                         fontSize = 11.sp
                                     )
                                 }
@@ -1597,7 +1597,7 @@ fun AddToPlaylistDialog(
                         }
                     }
                 ) {
-                    Text("Create & Add", color = SpotifyGreen, fontWeight = FontWeight.Bold)
+                    Text("Create & Add", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                 }
             }
         },
@@ -1607,10 +1607,10 @@ fun AddToPlaylistDialog(
                     if (isCreatingNew) isCreatingNew = false else onDismiss()
                 }
             ) {
-                Text("Cancel", color = TextSecondary)
+                Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
-        containerColor = DarkSurfaceContainerHigh
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
     )
 }
 
@@ -1645,10 +1645,10 @@ fun SongDetailsDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Close", color = SpotifyGreen, fontWeight = FontWeight.Bold)
+                Text("Close", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             }
         },
-        containerColor = DarkSurfaceContainerHigh
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
     )
 }
 
@@ -1658,14 +1658,14 @@ fun DetailItem(label: String, value: String) {
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
-            color = SpotifyGreen,
+            color = MaterialTheme.colorScheme.primary,
             fontSize = 11.sp,
             fontWeight = FontWeight.SemiBold
         )
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
-            color = TextPrimary
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -1685,8 +1685,8 @@ fun BatchActionBar(
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .testTag("batch_action_bar"),
-        color = DarkSurfaceContainerHigh,
-        border = androidx.compose.foundation.BorderStroke(1.dp, SpotifyGreen.copy(alpha = 0.5f))
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -1698,7 +1698,7 @@ fun BatchActionBar(
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Cancel selection",
-                        tint = TextSecondary,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -1707,7 +1707,7 @@ fun BatchActionBar(
                     text = "$selectedCount selected",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
 
@@ -1717,7 +1717,7 @@ fun BatchActionBar(
                     Icon(
                         imageVector = Icons.Default.PlayArrow,
                         contentDescription = "Play Selected",
-                        tint = SpotifyGreen,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(22.dp)
                     )
                 }
@@ -1726,7 +1726,7 @@ fun BatchActionBar(
                     Icon(
                         imageVector = Icons.Default.PlaylistAdd,
                         contentDescription = "Queue Selected",
-                        tint = TextPrimary,
+                        tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -1735,7 +1735,7 @@ fun BatchActionBar(
                     Icon(
                         imageVector = Icons.Default.QueueMusic,
                         contentDescription = "Add to playlist",
-                        tint = TextPrimary,
+                        tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -1744,7 +1744,7 @@ fun BatchActionBar(
                     Icon(
                         imageVector = Icons.Default.Favorite,
                         contentDescription = "Favorite Selected",
-                        tint = SpotifyGreen,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
                 }
