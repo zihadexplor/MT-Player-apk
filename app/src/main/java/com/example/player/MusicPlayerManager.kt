@@ -30,12 +30,32 @@ import kotlinx.coroutines.launch
 @OptIn(UnstableApi::class)
 class MusicPlayerManager(
     private val context: Context,
-    private val onTrackChanged: ((String) -> Unit)? = null
+    var onTrackChanged: ((String) -> Unit)? = null
 ) {
+    companion object {
+        @Volatile
+        private var instance: MusicPlayerManager? = null
+
+        fun getInstance(context: Context): MusicPlayerManager {
+            return instance ?: synchronized(this) {
+                instance ?: MusicPlayerManager(context.applicationContext).also { instance = it }
+            }
+        }
+    }
+
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var progressJob: Job? = null
 
-    private val player: ExoPlayer = PlaybackService.getOrCreatePlayer(context)
+    private var attachedPlayer: ExoPlayer? = null
+
+    val player: ExoPlayer
+        get() {
+            val current = PlaybackService.getOrCreatePlayer(context)
+            if (attachedPlayer !== current) {
+                attachToPlayer(current)
+            }
+            return current
+        }
 
     private val _playbackState = MutableStateFlow(PlaybackState())
     val playbackState: StateFlow<PlaybackState> = _playbackState.asStateFlow()
@@ -99,12 +119,21 @@ class MusicPlayerManager(
                 _sleepTimerRemainingSeconds.value = null
             }
             val currentIndex = player.currentMediaItemIndex
-            if (currentIndex in currentQueue.indices) {
-                val track = currentQueue[currentIndex]
+            val mediaId = mediaItem?.mediaId
+            val track = if (mediaId != null) {
+                currentQueue.find { it.id == mediaId }
+            } else if (currentIndex in currentQueue.indices) {
+                currentQueue[currentIndex]
+            } else null
+
+            if (track != null) {
+                val resolvedIndex = currentQueue.indexOfFirst { it.id == track.id }.let {
+                    if (it >= 0) it else currentIndex
+                }
                 _playbackState.update {
                     it.copy(
                         currentTrack = track,
-                        currentQueueIndex = currentIndex,
+                        currentQueueIndex = resolvedIndex,
                         currentPositionMs = 0L,
                         durationMs = if (track.durationMs > 0) track.durationMs else 0L,
                         errorMessage = null
@@ -126,6 +155,17 @@ class MusicPlayerManager(
                     errorMessage = message
                 )
             }
+
+            // Auto-advance to next song in background if one fails to prevent permanent freeze
+            scope.launch {
+                delay(1200L)
+                val p = player
+                if (p.hasNextMediaItem()) {
+                    p.seekToNextMediaItem()
+                    p.prepare()
+                    p.play()
+                }
+            }
         }
 
         override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
@@ -143,10 +183,16 @@ class MusicPlayerManager(
     }
 
     init {
-        player.addListener(playerListener)
-        // Ensure PlaybackService is started for background lifecycle
+        // Ensure initial player is bound and state restored
+        val p = PlaybackService.getOrCreatePlayer(context)
+        attachToPlayer(p)
         startServiceSilently()
-        // Restore playback state if player was already playing in background
+    }
+
+    private fun attachToPlayer(newPlayer: ExoPlayer) {
+        attachedPlayer?.removeListener(playerListener)
+        newPlayer.addListener(playerListener)
+        attachedPlayer = newPlayer
         restoreExistingState()
     }
 
@@ -159,12 +205,9 @@ class MusicPlayerManager(
         }
     }
 
-    private fun ensureServiceRunning() {
+    fun ensureServiceRunning() {
         try {
             val intent = Intent(context, PlaybackService::class.java)
-            // Starting via startService is valid while the app is in the foreground and avoids
-            // Android's strict 5-second startForeground deadline. MediaSessionService automatically
-            // promotes itself to foreground once playback starts.
             context.startService(intent)
         } catch (_: Exception) {
             try {
@@ -179,10 +222,11 @@ class MusicPlayerManager(
     }
 
     private fun restoreExistingState() {
-        val isPlaying = player.isPlaying
-        val duration = player.duration.coerceAtLeast(0L)
-        val position = player.currentPosition.coerceAtLeast(0L)
-        val repeat = when (player.repeatMode) {
+        val p = attachedPlayer ?: return
+        val isPlaying = p.isPlaying
+        val duration = p.duration.coerceAtLeast(0L)
+        val position = p.currentPosition.coerceAtLeast(0L)
+        val repeat = when (p.repeatMode) {
             Player.REPEAT_MODE_ONE -> PlayerRepeatMode.ONE
             Player.REPEAT_MODE_ALL -> PlayerRepeatMode.ALL
             else -> PlayerRepeatMode.OFF
@@ -193,7 +237,7 @@ class MusicPlayerManager(
                 isPlaying = isPlaying,
                 durationMs = duration,
                 currentPositionMs = position,
-                isShuffleEnabled = player.shuffleModeEnabled,
+                isShuffleEnabled = p.shuffleModeEnabled,
                 repeatMode = repeat
             )
         }
@@ -219,9 +263,10 @@ class MusicPlayerManager(
     }
 
     private fun updateCurrentPosition() {
-        val pos = player.currentPosition.coerceAtLeast(0L)
-        val dur = player.duration.let { if (it > 0) it else _playbackState.value.durationMs }
-        val buf = player.bufferedPosition.coerceAtLeast(0L)
+        val p = player
+        val pos = p.currentPosition.coerceAtLeast(0L)
+        val dur = p.duration.let { if (it > 0) it else _playbackState.value.durationMs }
+        val buf = p.bufferedPosition.coerceAtLeast(0L)
         _playbackState.update {
             it.copy(
                 currentPositionMs = pos,
@@ -269,9 +314,10 @@ class MusicPlayerManager(
         }
 
         try {
-            player.setMediaItems(mediaItems, startIndex, 0L)
-            player.prepare()
-            player.play()
+            val p = player
+            p.setMediaItems(mediaItems, startIndex, 0L)
+            p.prepare()
+            p.play()
             onTrackChanged?.invoke(track.id)
         } catch (e: Exception) {
             _playbackState.update {
@@ -281,13 +327,14 @@ class MusicPlayerManager(
     }
 
     fun playNext(track: AudioTrack) {
-        val currentIndex = player.currentMediaItemIndex
+        val p = player
+        val currentIndex = p.currentMediaItemIndex
         val insertIndex = (currentIndex + 1).coerceAtMost(currentQueue.size)
         val newQueue = currentQueue.toMutableList()
         newQueue.add(insertIndex, track)
         currentQueue = newQueue
 
-        player.addMediaItem(insertIndex, createMediaItem(track))
+        p.addMediaItem(insertIndex, createMediaItem(track))
         _playbackState.update { it.copy(queue = currentQueue) }
     }
 
@@ -315,22 +362,27 @@ class MusicPlayerManager(
     }
 
     fun togglePlayPause() {
-        if (player.playbackState == Player.STATE_IDLE && currentQueue.isNotEmpty()) {
+        val p = player
+        if (p.playbackState == Player.STATE_IDLE && currentQueue.isNotEmpty()) {
             val track = _playbackState.value.currentTrack ?: currentQueue.first()
             playTrack(track, currentQueue)
             return
         }
-        if (player.isPlaying) {
-            player.pause()
+        if (p.isPlaying) {
+            p.pause()
         } else {
             ensureServiceRunning()
-            player.play()
+            if (p.playbackState == Player.STATE_IDLE) {
+                p.prepare()
+            }
+            p.play()
         }
     }
 
     fun pause() {
-        if (player.isPlaying) {
-            player.pause()
+        val p = player
+        if (p.isPlaying) {
+            p.pause()
         }
     }
 
@@ -340,42 +392,61 @@ class MusicPlayerManager(
     }
 
     fun next() {
-        if (player.hasNextMediaItem()) {
-            player.seekToNextMediaItem()
+        val p = player
+        ensureServiceRunning()
+        if (p.hasNextMediaItem()) {
+            p.seekToNextMediaItem()
+            if (p.playbackState == Player.STATE_IDLE) {
+                p.prepare()
+            }
+            p.play()
         } else if (_playbackState.value.repeatMode == PlayerRepeatMode.ALL && currentQueue.isNotEmpty()) {
-            player.seekTo(0, 0L)
+            p.seekTo(0, 0L)
+            if (p.playbackState == Player.STATE_IDLE) {
+                p.prepare()
+            }
+            p.play()
         }
     }
 
     fun previous() {
-        if (player.currentPosition > 3000L) {
-            player.seekTo(0L)
-        } else if (player.hasPreviousMediaItem()) {
-            player.seekToPreviousMediaItem()
+        val p = player
+        ensureServiceRunning()
+        if (p.currentPosition > 3000L) {
+            p.seekTo(0L)
+        } else if (p.hasPreviousMediaItem()) {
+            p.seekToPreviousMediaItem()
+            if (p.playbackState == Player.STATE_IDLE) {
+                p.prepare()
+            }
+            p.play()
         } else {
-            player.seekTo(0L)
+            p.seekTo(0L)
         }
     }
 
     fun toggleShuffle() {
-        val newShuffle = !player.shuffleModeEnabled
-        player.shuffleModeEnabled = newShuffle
+        val p = player
+        val newShuffle = !p.shuffleModeEnabled
+        p.shuffleModeEnabled = newShuffle
         _playbackState.update { it.copy(isShuffleEnabled = newShuffle) }
     }
 
     fun cycleRepeatMode() {
-        val nextMode = when (player.repeatMode) {
+        val p = player
+        val nextMode = when (p.repeatMode) {
             Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
             Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
             else -> Player.REPEAT_MODE_OFF
         }
-        player.repeatMode = nextMode
+        p.repeatMode = nextMode
     }
 
     fun playQueueIndex(index: Int) {
         if (index in currentQueue.indices) {
-            player.seekTo(index, 0L)
-            player.play()
+            val p = player
+            p.seekTo(index, 0L)
+            p.play()
         }
     }
 
@@ -427,7 +498,7 @@ class MusicPlayerManager(
     fun release() {
         stopProgressTracker()
         stopSleepTimer()
-        player.removeListener(playerListener)
-        // Note: Do not release shared player here so background service continues seamlessly!
+        attachedPlayer?.removeListener(playerListener)
+        attachedPlayer = null
     }
 }

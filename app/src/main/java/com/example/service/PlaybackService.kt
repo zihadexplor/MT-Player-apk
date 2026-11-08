@@ -1,17 +1,24 @@
 package com.example.service
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
+import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.example.MainActivity
+import com.example.R
 import com.example.player.equalizer.EqualizerManager
 
 @OptIn(UnstableApi::class)
@@ -21,12 +28,13 @@ class PlaybackService : MediaSessionService() {
 
     companion object {
         const val PLAYBACK_CHANNEL_ID = "mt_player_playback_channel"
+        private const val DEFAULT_CHANNEL_ID = "default_channel_id"
 
         @Volatile
         var sharedPlayer: ExoPlayer? = null
             private set
 
-        fun getOrCreatePlayer(context: android.content.Context): ExoPlayer {
+        fun getOrCreatePlayer(context: Context): ExoPlayer {
             val existing = sharedPlayer
             if (existing != null) return existing
             synchronized(this) {
@@ -59,9 +67,49 @@ class PlaybackService : MediaSessionService() {
         }
     }
 
+    private val mediaSessionCallback = object : MediaSession.Callback {
+        override fun onConnect(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo
+        ): MediaSession.ConnectionResult {
+            val connectionResult = super.onConnect(session, controller)
+            val sessionCommands = connectionResult.availableSessionCommands
+            val playerCommands = connectionResult.availablePlayerCommands.buildUpon()
+                .add(Player.COMMAND_PLAY_PAUSE)
+                .add(Player.COMMAND_PREPARE)
+                .add(Player.COMMAND_STOP)
+                .add(Player.COMMAND_SEEK_TO_DEFAULT_POSITION)
+                .add(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
+                .add(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
+                .add(Player.COMMAND_SEEK_TO_PREVIOUS)
+                .add(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
+                .add(Player.COMMAND_SEEK_TO_NEXT)
+                .add(Player.COMMAND_SEEK_TO_MEDIA_ITEM)
+                .add(Player.COMMAND_SET_SHUFFLE_MODE)
+                .add(Player.COMMAND_SET_REPEAT_MODE)
+                .add(Player.COMMAND_GET_CURRENT_MEDIA_ITEM)
+                .add(Player.COMMAND_GET_TIMELINE)
+                .add(Player.COMMAND_GET_METADATA)
+                .build()
+
+            return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                .setAvailableSessionCommands(sessionCommands)
+                .setAvailablePlayerCommands(playerCommands)
+                .build()
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         ensureNotificationChannel()
+
+        // Explicitly set media notification provider with our public channel
+        val notificationProvider = DefaultMediaNotificationProvider.Builder(this)
+            .setChannelId(PLAYBACK_CHANNEL_ID)
+            .setChannelName(R.string.playback_notification_channel_name)
+            .build()
+        setMediaNotificationProvider(notificationProvider)
+
         val player = getOrCreatePlayer(this)
 
         // Attach audio session if already initialized
@@ -82,30 +130,49 @@ class PlaybackService : MediaSessionService() {
         )
 
         mediaSession = MediaSession.Builder(this, player)
+            .setCallback(mediaSessionCallback)
             .setSessionActivity(pendingIntent)
             .build()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        return try {
-            super.onStartCommand(intent, flags, startId)
-        } catch (_: Exception) {
-            START_NOT_STICKY
-        }
+        super.onStartCommand(intent, flags, startId)
+        return START_STICKY
     }
 
     private fun ensureNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = android.app.NotificationChannel(
+            val manager = getSystemService(NotificationManager::class.java) ?: return
+            val channelName = getString(R.string.playback_notification_channel_name)
+            val channelDesc = getString(R.string.playback_notification_channel_desc)
+
+            // Primary playback channel with public lock-screen visibility
+            val playbackChannel = NotificationChannel(
                 PLAYBACK_CHANNEL_ID,
-                "Playback",
-                android.app.NotificationManager.IMPORTANCE_LOW
+                channelName,
+                NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Playback controls and notifications"
+                description = channelDesc
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
                 setShowBadge(false)
+                enableLights(false)
+                enableVibration(false)
             }
-            val manager = getSystemService(android.app.NotificationManager::class.java)
-            manager?.createNotificationChannel(channel)
+            manager.createNotificationChannel(playbackChannel)
+
+            // Fallback default_channel_id for Media3 internal components
+            val defaultChannel = NotificationChannel(
+                DEFAULT_CHANNEL_ID,
+                channelName,
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = channelDesc
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                setShowBadge(false)
+                enableLights(false)
+                enableVibration(false)
+            }
+            manager.createNotificationChannel(defaultChannel)
         }
     }
 
@@ -115,7 +182,7 @@ class PlaybackService : MediaSessionService() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         val player = mediaSession?.player
-        if (player == null || !player.playWhenReady || player.mediaItemCount == 0) {
+        if (player == null || (!player.playWhenReady && !player.isPlaying)) {
             stopSelf()
         }
     }

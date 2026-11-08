@@ -28,14 +28,7 @@ import kotlinx.coroutines.launch
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: MediaRepository = OfflineMediaRepository(application.applicationContext)
-    private val playerManager: MusicPlayerManager = MusicPlayerManager(
-        context = application.applicationContext,
-        onTrackChanged = { trackId ->
-            viewModelScope.launch {
-                repository.recordTrackPlayed(trackId)
-            }
-        }
-    )
+    private val playerManager: MusicPlayerManager = MusicPlayerManager.getInstance(application.applicationContext)
 
     private val equalizerManager: com.example.player.equalizer.EqualizerManager =
         com.example.player.equalizer.EqualizerManager.getInstance(application.applicationContext)
@@ -242,6 +235,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
+        playerManager.onTrackChanged = { trackId ->
+            viewModelScope.launch {
+                repository.recordTrackPlayed(trackId)
+            }
+        }
         scanMedia()
     }
 
@@ -605,6 +603,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     override fun onCleared() {
         super.onCleared()
-        playerManager.release()
+        playerManager.onTrackChanged = null
     }
 }

@@ -74,6 +74,15 @@
             </intent-filter>
         </service>
 
+        <!-- Media button receiver for Bluetooth and lock screen media keys -->
+        <receiver
+            android:name="androidx.media3.session.MediaButtonReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
+        </receiver>
+
         <!-- Updater: DownloadManager completion. Must be exported because the broadcast comes from
              the system DownloadProvider; the payload is validated against our own download id. -->
         <receiver
