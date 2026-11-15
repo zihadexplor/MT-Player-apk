@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Auto Backup rules for Android 9 – 11. Updater state is device-specific and never backed up. -->
-<full-backup-content>
-    <exclude domain="sharedpref" path="mt_updater.xml" />
-</full-backup-content>

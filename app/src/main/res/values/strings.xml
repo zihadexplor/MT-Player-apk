@@ -1,5 +1,0 @@
-<resources>
-    <string name="app_name">MT Player</string>
-    <string name="playback_notification_channel_name">Music Playback</string>
-    <string name="playback_notification_channel_desc">Playback controls and track information</string>
-</resources>
