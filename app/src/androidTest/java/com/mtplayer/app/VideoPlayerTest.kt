@@ -52,8 +52,10 @@ class VideoPlayerTest {
 
         // Leaving with Home while playing must enter picture-in-picture (auto-PiP default on).
         UiDevice.getInstance(instr).pressHome()
-        assertTrue("did not enter PiP", TestSupport.waitUntil(10_000) { onMain { act.isInPictureInPictureMode } })
-        assertTrue("PiP state not reflected in UI", TestSupport.waitUntil(5_000) { onMain { act.ui.inPip } })
+        // Re-resolve the activity each poll so a platform relaunch cannot leave the test on a stale instance.
+        assertTrue("did not enter PiP", TestSupport.waitUntil(10_000) { activity()?.let { a -> onMain { a.isInPictureInPictureMode } } == true })
+        assertTrue("PiP state not reflected in UI", TestSupport.waitUntil(5_000) { activity()?.let { a -> onMain { a.ui.inPip } } == true })
+        assertTrue("video activity was recreated on entering PiP", activity() === act)
 
         instr.runOnMainSync { act.finish() }
         assertTrue(TestSupport.waitUntil(10_000) { onMain { act.lifecycle.currentState == Lifecycle.State.DESTROYED } })

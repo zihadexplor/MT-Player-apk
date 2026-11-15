@@ -74,6 +74,8 @@ set +e
 RC=$?
 set -e
 mkdir -p "$OUT/instrumentation"
+adb logcat -d > "$OUT/logcat-instrumentation.txt" || true
+adb logcat -c || true
 cp -r app/build/outputs/androidTest-results/connected/* "$OUT/instrumentation/" 2>/dev/null || true
 [ $RC -eq 0 ] && log "PASS instrumentation tests" || log "FAIL instrumentation tests (rc=$RC)"
 
@@ -115,9 +117,11 @@ sleep 3; dump day
 log "theme screenshots captured (night.png / day.png)"
 
 adb logcat -d > "$OUT/logcat.txt" || true
-if grep -E "FATAL EXCEPTION|ANR in $PKG" "$OUT/logcat.txt" | grep -q .; then fail "crash or ANR in logcat"; fi
+# App crashes ("FATAL EXCEPTION" followed by "Process: <pkg>") or ANRs of the app, in either window.
+if cat "$OUT/logcat-instrumentation.txt" "$OUT/logcat.txt" | grep -A2 "FATAL EXCEPTION" | grep -q "Process: $PKG" \
+   || cat "$OUT/logcat-instrumentation.txt" "$OUT/logcat.txt" | grep -q "ANR in $PKG"; then fail "crash or ANR in logcat"; fi
 log "PASS no crash / ANR in logcat"
 # StrictMode (debug builds) logs main-thread I/O and leaks; recorded as evidence, not a gate.
-grep -E "StrictMode policy violation" -A3 "$OUT/logcat.txt" > "$OUT/strictmode.txt" || true
+cat "$OUT/logcat-instrumentation.txt" "$OUT/logcat.txt" | grep -E "StrictMode policy violation" -A3 > "$OUT/strictmode.txt" || true
 log "StrictMode violations recorded: $(grep -c 'StrictMode policy violation' "$OUT/strictmode.txt" || true)"
 [ $RC -eq 0 ] || exit $RC

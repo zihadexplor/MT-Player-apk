@@ -15,6 +15,7 @@ import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.util.Rational
 import android.view.KeyEvent
 import android.view.WindowManager
@@ -77,6 +78,7 @@ class VideoPlayerActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Log.i(TAG, "onCreate restored=${savedInstanceState != null}")
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         window.attributes = window.attributes.apply {
@@ -356,6 +358,7 @@ class VideoPlayerActivity : ComponentActivity() {
 
     override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        Log.i(TAG, "onPictureInPictureModeChanged $isInPictureInPictureMode")
         ui.inPip = isInPictureInPictureMode
         if (!isInPictureInPictureMode && !lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
             // PiP window was dismissed: stop like closing the player.
@@ -377,6 +380,31 @@ class VideoPlayerActivity : ComponentActivity() {
 
     private fun registerPipReceiver() {
         ContextCompat.registerReceiver(this, pipReceiver, IntentFilter(ACTION_PIP), ContextCompat.RECEIVER_NOT_EXPORTED)
+    }
+
+    // The PiP callback is the primary signal; the configuration (windowing mode) and lifecycle
+    // hooks keep the UI correct if a platform version delivers it late or not at all.
+    private fun syncPipState() {
+        val now = isInPictureInPictureMode
+        if (ui.inPip != now) {
+            Log.i(TAG, "PiP state synced from window: $now")
+            ui.inPip = now
+        }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        syncPipState()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        syncPipState()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        syncPipState()
     }
 
     // --- Lifecycle ------------------------------------------------------------------------
@@ -448,6 +476,7 @@ class VideoPlayerActivity : ComponentActivity() {
     fun setVideoBounds(rect: Rect) { ui.videoBounds = rect }
 
     companion object {
+        private const val TAG = "MtVideo"
         private const val SESSION_ID = "mt_video"
         private const val EXTRA_VIDEO_ID = "video_id"
         private const val EXTRA_SIBLINGS = "siblings"
