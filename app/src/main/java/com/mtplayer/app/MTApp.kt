@@ -2,6 +2,7 @@ package com.mtplayer.app
 
 import android.app.Application
 import android.content.ComponentCallbacks2
+import android.os.StrictMode
 import androidx.lifecycle.ProcessLifecycleOwner
 import coil.ImageLoader
 import coil.ImageLoaderFactory
@@ -24,6 +25,7 @@ class MTApp : Application(), ImageLoaderFactory {
 
     override fun onCreate() {
         super.onCreate()
+        if (BuildConfig.DEBUG) enableStrictMode()
         container = AppContainer(this)
         container.crashLog.install()
         ProcessLifecycleOwner.get().lifecycle.addObserver(container.player)
@@ -39,6 +41,18 @@ class MTApp : Application(), ImageLoaderFactory {
                 )
             }
         }
+    }
+
+    /** Debug only: log (never crash on) main-thread disk/network work and leaked closeables. */
+    private fun enableStrictMode() {
+        StrictMode.setThreadPolicy(
+            StrictMode.ThreadPolicy.Builder().detectDiskReads().detectDiskWrites().detectNetwork()
+                .penaltyLog().build(),
+        )
+        StrictMode.setVmPolicy(
+            StrictMode.VmPolicy.Builder().detectLeakedClosableObjects().detectLeakedSqlLiteObjects()
+                .detectActivityLeaks().detectLeakedRegistrationObjects().penaltyLog().build(),
+        )
     }
 
     override fun newImageLoader(): ImageLoader {

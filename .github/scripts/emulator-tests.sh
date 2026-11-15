@@ -99,4 +99,7 @@ log "theme screenshots captured (night.png / day.png)"
 adb logcat -d > "$OUT/logcat.txt" || true
 if grep -E "FATAL EXCEPTION|ANR in $PKG" "$OUT/logcat.txt" | grep -q .; then fail "crash or ANR in logcat"; fi
 log "PASS no crash / ANR in logcat"
+# StrictMode (debug builds) logs main-thread I/O and leaks; recorded as evidence, not a gate.
+grep -E "StrictMode policy violation" -A3 "$OUT/logcat.txt" > "$OUT/strictmode.txt" || true
+log "StrictMode violations recorded: $(grep -c 'StrictMode policy violation' "$OUT/strictmode.txt" || true)"
 [ $RC -eq 0 ] || exit $RC
