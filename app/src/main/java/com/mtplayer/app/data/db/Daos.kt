@@ -109,11 +109,18 @@ interface HistoryDao {
     @Query("SELECT * FROM play_history WHERE media_type = :type ORDER BY play_count DESC, last_played_at DESC LIMIT :limit")
     fun observeMostPlayed(type: String, limit: Int): Flow<List<PlayHistoryEntity>>
 
-    @Query(
-        """INSERT INTO play_history(media_type, media_id, last_played_at, play_count) VALUES(:type, :id, :now, 1)
-           ON CONFLICT(media_type, media_id) DO UPDATE SET last_played_at = :now, play_count = play_count + 1"""
-    )
-    suspend fun recordPlay(type: String, id: Long, now: Long)
+    // Android 9/10 ship SQLite 3.22, which has no UPSERT (3.24+), so this is insert-or-ignore + update.
+    @Query("INSERT OR IGNORE INTO play_history(media_type, media_id, last_played_at, play_count) VALUES(:type, :id, :now, 0)")
+    suspend fun ensureHistoryRow(type: String, id: Long, now: Long)
+
+    @Query("UPDATE play_history SET last_played_at = :now, play_count = play_count + 1 WHERE media_type = :type AND media_id = :id")
+    suspend fun bumpHistoryRow(type: String, id: Long, now: Long)
+
+    @Transaction
+    suspend fun recordPlay(type: String, id: Long, now: Long) {
+        ensureHistoryRow(type, id, now)
+        bumpHistoryRow(type, id, now)
+    }
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAll(entities: List<PlayHistoryEntity>)

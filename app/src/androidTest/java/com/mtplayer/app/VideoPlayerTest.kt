@@ -53,7 +53,7 @@ class VideoPlayerTest {
         // Leaving with Home while playing must enter picture-in-picture (auto-PiP default on).
         UiDevice.getInstance(instr).pressHome()
         assertTrue("did not enter PiP", TestSupport.waitUntil(10_000) { onMain { act.isInPictureInPictureMode } })
-        assertTrue("PiP state not reflected in UI", onMain { act.ui.inPip })
+        assertTrue("PiP state not reflected in UI", TestSupport.waitUntil(5_000) { onMain { act.ui.inPip } })
 
         instr.runOnMainSync { act.finish() }
         assertTrue(TestSupport.waitUntil(10_000) { onMain { act.lifecycle.currentState == Lifecycle.State.DESTROYED } })

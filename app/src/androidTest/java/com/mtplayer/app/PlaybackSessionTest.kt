@@ -85,7 +85,9 @@ class PlaybackSessionTest {
         assertTrue("notification must stay while paused", mediaNotification() != null)
 
         val commands = onMain { controller.availableCommands }
-        assertTrue(commands.contains(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM))
+        // On the last item there is no "next media item", but previous/next transport stays available.
+        assertTrue(commands.contains(Player.COMMAND_SEEK_TO_PREVIOUS))
+        assertTrue(commands.contains(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM))
         assertTrue(commands.contains(Player.COMMAND_SET_SHUFFLE_MODE))
         assertTrue(commands.contains(Player.COMMAND_SET_REPEAT_MODE))
     }

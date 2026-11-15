@@ -12,7 +12,19 @@ MAIN="$PKG/com.mtplayer.app.feature.shell.MainActivity"
 UI=.github/scripts/ui.py
 
 log() { echo "== $*" | tee -a "$OUT/summary.txt"; }
-dump() { adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1 || true; adb pull /sdcard/ui.xml "$OUT/$1.xml" >/dev/null; adb exec-out screencap -p > "$OUT/$1.png"; }
+raw_dump() { adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1 || true; adb pull /sdcard/ui.xml "$OUT/$1.xml" >/dev/null; adb exec-out screencap -p > "$OUT/$1.png"; }
+# Slow CI emulators sometimes show "<system app> isn't responding" over everything; such dialogs
+# belong to other processes (our own ANRs are caught by the logcat gate), so dismiss with "Wait".
+dump() {
+  raw_dump "$1"
+  for _ in 1 2 3; do
+    if grep -q "isn't responding\|isn&apos;t responding" "$OUT/$1.xml" && ! grep -q "MT Player isn" "$OUT/$1.xml"; then
+      cp "$OUT/$1.png" "$OUT/$1-system-anr-dialog.png"
+      xy=$(python3 "$UI" tap "$OUT/$1.xml" "Wait") && adb shell input tap $xy
+      sleep 2; raw_dump "$1"
+    else break; fi
+  done
+}
 tap() { local xy; xy=$(python3 "$UI" tap "$OUT/$1.xml" "$2") || { log "FAIL: '$2' not found in $1"; return 1; }; adb shell input tap $xy; }
 fail() { log "FAIL: $*"; exit 1; }
 

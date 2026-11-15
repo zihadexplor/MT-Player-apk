@@ -87,7 +87,11 @@ class UserDataRepository(private val db: MtDatabase, private val clock: () -> Lo
     // History -----------------------------------------------------------------------------
     fun recent(type: String, limit: Int = 50): Flow<List<PlayHistoryEntity>> = db.history().observeRecent(type, limit)
     fun mostPlayed(type: String, limit: Int = 50): Flow<List<PlayHistoryEntity>> = db.history().observeMostPlayed(type, limit)
-    suspend fun recordPlay(type: String, id: Long) = db.history().recordPlay(type, id, clock())
+    /** History is best-effort: a storage failure must never interrupt playback. */
+    suspend fun recordPlay(type: String, id: Long) {
+        runCatching { db.history().recordPlay(type, id, clock()) }
+            .onFailure { if (it is kotlinx.coroutines.CancellationException) throw it; android.util.Log.w("UserData", "recordPlay failed", it) }
+    }
     suspend fun clearHistory() { db.history().clearAll(); db.videoProgress().clear() }
 
     // Video progress ----------------------------------------------------------------------
