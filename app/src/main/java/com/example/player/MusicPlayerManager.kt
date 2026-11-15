@@ -15,6 +15,7 @@ import com.example.data.model.AudioTrack
 import com.example.data.model.PlaybackState
 import com.example.data.model.PlayerRepeatMode
 import com.example.service.PlaybackService
+import com.example.util.CrashLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -30,7 +31,8 @@ import kotlinx.coroutines.launch
 @OptIn(UnstableApi::class)
 class MusicPlayerManager(
     private val context: Context,
-    var onTrackChanged: ((String) -> Unit)? = null
+    var onTrackChanged: ((String) -> Unit)? = null,
+    var onSavePosition: ((songId: String, posMs: Long, durMs: Long) -> Unit)? = null
 ) {
     companion object {
         @Volatile
@@ -45,6 +47,7 @@ class MusicPlayerManager(
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var progressJob: Job? = null
+    private var crossfadeJob: Job? = null
 
     private var attachedPlayer: ExoPlayer? = null
 
@@ -68,6 +71,8 @@ class MusicPlayerManager(
     private var fadeOutAudioOnTimer: Boolean = true
     private var waitingForSongFinish: Boolean = false
 
+    private var crossfadeDurationSec: Int = 0
+    private var lastPositionPersistAtMs: Long = 0L
     private var currentQueue: List<AudioTrack> = emptyList()
 
     private val playerListener = object : Player.Listener {
@@ -78,6 +83,7 @@ class MusicPlayerManager(
             } else {
                 stopProgressTracker()
                 updateCurrentPosition()
+                persistCurrentTrackPositionNow()
             }
         }
 
@@ -118,6 +124,15 @@ class MusicPlayerManager(
                 waitingForSongFinish = false
                 _sleepTimerRemainingSeconds.value = null
             }
+
+            // Smooth crossfade ramp on track transition if enabled and not sleeping-fading
+            if (crossfadeDurationSec > 0 &&
+                (_sleepTimerRemainingSeconds.value == null || _sleepTimerRemainingSeconds.value!! > 30) &&
+                (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO || reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK)
+            ) {
+                triggerFadeIn(crossfadeDurationSec)
+            }
+
             val currentIndex = player.currentMediaItemIndex
             val mediaId = mediaItem?.mediaId
             val track = if (mediaId != null) {
@@ -149,6 +164,7 @@ class MusicPlayerManager(
                 PlaybackException.ERROR_CODE_DECODING_FAILED -> "Unsupported audio format"
                 else -> "Playback error: ${error.localizedMessage ?: "File unplayable"}"
             }
+            CrashLogger.logNonFatal("MusicPlayerManager", message, error)
             _playbackState.update {
                 it.copy(
                     isPlaying = false,
@@ -183,7 +199,6 @@ class MusicPlayerManager(
     }
 
     init {
-        // Ensure initial player is bound and state restored
         val p = PlaybackService.getOrCreatePlayer(context)
         attachToPlayer(p)
         startServiceSilently()
@@ -221,6 +236,33 @@ class MusicPlayerManager(
         }
     }
 
+    fun configureAudioBehavior(
+        gapless: Boolean,
+        autoPauseOnNoisy: Boolean,
+        crossfadeSec: Int
+    ) {
+        crossfadeDurationSec = crossfadeSec.coerceIn(0, 10)
+        val p = player
+        p.setHandleAudioBecomingNoisy(autoPauseOnNoisy)
+        p.pauseAtEndOfMediaItems = !gapless
+    }
+
+    private fun triggerFadeIn(seconds: Int) {
+        crossfadeJob?.cancel()
+        val durationMs = (seconds * 500L).coerceIn(400L, 2500L)
+        val steps = 12
+        val stepDelay = durationMs / steps
+        crossfadeJob = scope.launch {
+            player.volume = 0.15f
+            for (i in 1..steps) {
+                delay(stepDelay)
+                if (_sleepTimerRemainingSeconds.value?.let { it <= 30 } == true) break
+                val fraction = 0.15f + (0.85f * (i / steps.toFloat()))
+                player.volume = fraction.coerceIn(0.15f, 1.0f)
+            }
+        }
+    }
+
     private fun restoreExistingState() {
         val p = attachedPlayer ?: return
         val isPlaying = p.isPlaying
@@ -247,11 +289,41 @@ class MusicPlayerManager(
         }
     }
 
+    fun restoreLastTrack(track: AudioTrack, positionMs: Long) {
+        if (currentQueue.isNotEmpty() || _playbackState.value.currentTrack != null) return
+        currentQueue = listOf(track)
+        val safePos = positionMs.coerceIn(0L, track.durationMs.coerceAtLeast(positionMs))
+        _playbackState.update {
+            it.copy(
+                currentTrack = track,
+                queue = currentQueue,
+                currentQueueIndex = 0,
+                currentPositionMs = safePos,
+                durationMs = track.durationMs,
+                isPlaying = false,
+                errorMessage = null
+            )
+        }
+        try {
+            val p = player
+            p.setMediaItems(listOf(createMediaItem(track)), 0, safePos)
+            p.prepare()
+            p.pause()
+        } catch (_: Exception) {
+            // Keep UI state restored even if URI needs user action on play
+        }
+    }
+
     private fun startProgressTracker() {
         progressJob?.cancel()
         progressJob = scope.launch {
             while (isActive) {
                 updateCurrentPosition()
+                val now = System.currentTimeMillis()
+                if (now - lastPositionPersistAtMs >= 5000L) {
+                    lastPositionPersistAtMs = now
+                    persistCurrentTrackPositionNow()
+                }
                 delay(300)
             }
         }
@@ -273,6 +345,14 @@ class MusicPlayerManager(
                 durationMs = dur,
                 bufferedPositionMs = buf
             )
+        }
+    }
+
+    private fun persistCurrentTrackPositionNow() {
+        val st = _playbackState.value
+        val track = st.currentTrack ?: return
+        if (st.durationMs > 0L) {
+            onSavePosition?.invoke(track.id, st.currentPositionMs, st.durationMs)
         }
     }
 
@@ -315,11 +395,13 @@ class MusicPlayerManager(
 
         try {
             val p = player
+            p.volume = 1.0f
             p.setMediaItems(mediaItems, startIndex, 0L)
             p.prepare()
             p.play()
             onTrackChanged?.invoke(track.id)
         } catch (e: Exception) {
+            CrashLogger.logNonFatal("MusicPlayerManager", "Failed to load audio: ${track.title}", e)
             _playbackState.update {
                 it.copy(errorMessage = "Failed to load audio: ${e.localizedMessage}")
             }
@@ -357,8 +439,50 @@ class MusicPlayerManager(
             newQueue.removeAt(index)
             currentQueue = newQueue
             player.removeMediaItem(index)
-            _playbackState.update { it.copy(queue = currentQueue) }
+            val newIndex = player.currentMediaItemIndex.coerceIn(-1, (currentQueue.size - 1).coerceAtLeast(-1))
+            _playbackState.update {
+                it.copy(
+                    queue = currentQueue,
+                    currentQueueIndex = newIndex,
+                    currentTrack = currentQueue.getOrNull(newIndex) ?: it.currentTrack
+                )
+            }
         }
+    }
+
+    fun reorderQueue(fromIndex: Int, toIndex: Int) {
+        if (fromIndex !in currentQueue.indices || toIndex !in currentQueue.indices || fromIndex == toIndex) return
+        val mutable = currentQueue.toMutableList()
+        val moved = mutable.removeAt(fromIndex)
+        mutable.add(toIndex, moved)
+        currentQueue = mutable
+        val p = player
+        p.moveMediaItem(fromIndex, toIndex)
+        val currentId = _playbackState.value.currentTrack?.id
+        val newIndex = if (currentId != null) {
+            currentQueue.indexOfFirst { it.id == currentId }
+        } else {
+            p.currentMediaItemIndex
+        }
+        _playbackState.update {
+            it.copy(
+                queue = currentQueue,
+                currentQueueIndex = newIndex
+            )
+        }
+    }
+
+    fun clearQueue() {
+        stopProgressTracker()
+        crossfadeJob?.cancel()
+        val p = player
+        p.stop()
+        p.clearMediaItems()
+        currentQueue = emptyList()
+        _playbackState.value = PlaybackState(
+            isShuffleEnabled = _playbackState.value.isShuffleEnabled,
+            repeatMode = _playbackState.value.repeatMode
+        )
     }
 
     fun togglePlayPause() {
@@ -384,11 +508,18 @@ class MusicPlayerManager(
         if (p.isPlaying) {
             p.pause()
         }
+        persistCurrentTrackPositionNow()
     }
 
     fun seekTo(positionMs: Long) {
-        player.seekTo(positionMs.coerceAtLeast(0L))
-        _playbackState.update { it.copy(currentPositionMs = positionMs) }
+        val clamped = positionMs.coerceAtLeast(0L)
+        player.seekTo(clamped)
+        _playbackState.update { it.copy(currentPositionMs = clamped) }
+        val track = _playbackState.value.currentTrack
+        val dur = _playbackState.value.durationMs
+        if (track != null && dur > 0L) {
+            onSavePosition?.invoke(track.id, clamped, dur)
+        }
     }
 
     fun next() {
@@ -444,8 +575,12 @@ class MusicPlayerManager(
 
     fun playQueueIndex(index: Int) {
         if (index in currentQueue.indices) {
+            ensureServiceRunning()
             val p = player
             p.seekTo(index, 0L)
+            if (p.playbackState == Player.STATE_IDLE) {
+                p.prepare()
+            }
             p.play()
         }
     }
@@ -497,6 +632,7 @@ class MusicPlayerManager(
 
     fun release() {
         stopProgressTracker()
+        crossfadeJob?.cancel()
         stopSleepTimer()
         attachedPlayer?.removeListener(playerListener)
         attachedPlayer = null

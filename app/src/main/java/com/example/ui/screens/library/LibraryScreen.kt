@@ -75,16 +75,6 @@ import com.example.ui.components.EmptyMediaView
 import com.example.ui.components.TrackItemRow
 import com.example.ui.components.formatDuration
 import com.example.ui.components.formatFileSize
-import com.example.ui.theme.DarkOutline
-import com.example.ui.theme.DarkOutlineVariant
-import com.example.ui.theme.DarkSurface
-import com.example.ui.theme.DarkSurfaceContainerHigh
-import com.example.ui.theme.DarkSurfaceVariant
-import com.example.ui.theme.SpotifyGreen
-import com.example.ui.theme.SpotifyGreenBright
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TextTertiary
 
 @Composable
 fun LibraryScreen(
@@ -102,6 +92,7 @@ fun LibraryScreen(
     onTrackClick: (AudioTrack, List<AudioTrack>) -> Unit,
     onToggleFavorite: (String) -> Unit,
     onNavigateToMusic: () -> Unit,
+    onNavigateToFavorites: () -> Unit = onNavigateToMusic,
     onNavigateToSettings: () -> Unit,
     onNavigateToEqualizer: () -> Unit = {},
     onTrackOptionsClick: (AudioTrack) -> Unit,
@@ -131,7 +122,7 @@ fun LibraryScreen(
                     text = "New Playlist",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             },
             text = {
@@ -139,14 +130,14 @@ fun LibraryScreen(
                     Text(
                         text = "Name your playlist:",
                         style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(10.dp))
                     OutlinedTextField(
                         value = newPlaylistName,
                         onValueChange = { newPlaylistName = it },
                         singleLine = true,
-                        placeholder = { Text("e.g. Focus Chill", color = TextTertiary) },
+                        placeholder = { Text("e.g. Focus Chill", color = MaterialTheme.colorScheme.outline) },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
@@ -194,7 +185,7 @@ fun LibraryScreen(
                     text = "Rename Playlist",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             },
             text = {
@@ -241,14 +232,14 @@ fun LibraryScreen(
                     text = "Delete Playlist?",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             },
             text = {
                 Text(
                     text = "Are you sure you want to delete '${pl.name}'? Audio files on your device storage will not be affected.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
             confirmButton = {
@@ -261,12 +252,12 @@ fun LibraryScreen(
                         playlistToDelete = null
                     }
                 ) {
-                    Text("Delete", color = Color(0xFFFF6B6B), fontWeight = FontWeight.Bold)
+                    Text("Delete", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { playlistToDelete = null }) {
-                    Text("Cancel", color = TextSecondary)
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
@@ -298,7 +289,7 @@ fun LibraryScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back to Library",
-                            tint = TextPrimary
+                            tint = MaterialTheme.colorScheme.onBackground
                         )
                     }
 
@@ -309,12 +300,12 @@ fun LibraryScreen(
                             text = selectedPlaylist.name,
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            color = MaterialTheme.colorScheme.onBackground
                         )
                         Text(
                             text = "${playlistTracks.size} songs",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
@@ -329,7 +320,7 @@ fun LibraryScreen(
                         Icon(
                             imageVector = Icons.Default.Edit,
                             contentDescription = "Rename Playlist",
-                            tint = TextSecondary,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -342,7 +333,7 @@ fun LibraryScreen(
                         Icon(
                             imageVector = Icons.Default.Delete,
                             contentDescription = "Delete Playlist",
-                            tint = Color(0xFFFF6B6B),
+                            tint = MaterialTheme.colorScheme.error,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -413,7 +404,7 @@ fun LibraryScreen(
                             Text(
                                 text = "${index + 1}",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = TextTertiary,
+                                color = MaterialTheme.colorScheme.outline,
                                 modifier = Modifier.width(22.dp)
                             )
 
@@ -429,7 +420,7 @@ fun LibraryScreen(
                                 Text(
                                     text = track.artist,
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = TextSecondary,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
@@ -444,7 +435,7 @@ fun LibraryScreen(
                                     Icon(
                                         imageVector = Icons.Default.KeyboardArrowUp,
                                         contentDescription = "Move Up",
-                                        tint = TextSecondary,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.size(20.dp)
                                     )
                                 }
@@ -459,7 +450,7 @@ fun LibraryScreen(
                                     Icon(
                                         imageVector = Icons.Default.KeyboardArrowDown,
                                         contentDescription = "Move Down",
-                                        tint = TextSecondary,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.size(20.dp)
                                     )
                                 }
@@ -473,7 +464,7 @@ fun LibraryScreen(
                                 Icon(
                                     imageVector = Icons.Default.RemoveCircleOutline,
                                     contentDescription = "Remove from playlist",
-                                    tint = TextTertiary,
+                                    tint = MaterialTheme.colorScheme.outline,
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -502,7 +493,7 @@ fun LibraryScreen(
                         text = "Music Library",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = MaterialTheme.colorScheme.onBackground
                     )
 
                     IconButton(
@@ -535,7 +526,7 @@ fun LibraryScreen(
                         subtitle = "${allTracks.count { it.isFavorite }} songs",
                         icon = Icons.Default.Favorite,
                         iconTint = MaterialTheme.colorScheme.primary,
-                        onClick = onNavigateToMusic,
+                        onClick = onNavigateToFavorites,
                         modifier = Modifier.weight(1f),
                         testTag = "lib_fav_card"
                     )
@@ -558,7 +549,7 @@ fun LibraryScreen(
                         text = "Recently Played",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                 }
 
@@ -586,7 +577,7 @@ fun LibraryScreen(
                             text = "Most Played",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            color = MaterialTheme.colorScheme.onBackground
                         )
                     }
                 }
@@ -613,12 +604,12 @@ fun LibraryScreen(
                         text = "Playlists",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                     Text(
                         text = "${playlists.size} playlists",
                         style = MaterialTheme.typography.bodySmall,
-                        color = TextTertiary
+                        color = MaterialTheme.colorScheme.outline
                     )
                 }
             }
@@ -659,13 +650,13 @@ fun LibraryScreen(
                                 text = playlist.name,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
-                                color = TextPrimary
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = "Playlist • ${playlist.trackIds.size} songs",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = TextSecondary
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -686,7 +677,7 @@ fun LibraryScreen(
                             text = "Storage & Library Breakdown",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.height(10.dp))
                         MetricRow(label = "Local Audio Tracks", value = "${stats.audioCount} files", icon = Icons.Default.LibraryMusic)
@@ -747,12 +738,12 @@ fun LibraryCategoryCard(
                     text = title,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 11.sp
                 )
             }
@@ -782,14 +773,14 @@ fun MetricRow(
             Text(
                 text = label,
                 style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondary
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         Text(
             text = value,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
-            color = TextPrimary
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }

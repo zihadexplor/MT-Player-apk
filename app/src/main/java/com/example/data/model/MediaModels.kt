@@ -33,6 +33,8 @@ data class AudioTrack(
     val isFavorite: Boolean = false,
     val folderName: String = "Music",
     val folderPath: String = "",
+    val filePath: String = "",
+    val genre: String = "",
     val dateAdded: Long = 0L,
     val playCount: Int = 0
 )
@@ -50,6 +52,12 @@ data class Artist(
     val name: String,
     val trackCount: Int,
     val albumCount: Int,
+    val tracks: List<AudioTrack> = emptyList()
+)
+
+data class Genre(
+    val name: String,
+    val trackCount: Int,
     val tracks: List<AudioTrack> = emptyList()
 )
 

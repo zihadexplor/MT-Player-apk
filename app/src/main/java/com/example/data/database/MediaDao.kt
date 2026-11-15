@@ -241,4 +241,16 @@ interface MediaDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun saveSleepTimerPreference(entity: SleepTimerPreferenceEntity)
+
+    // -------------------------------------------------------------------------
+    // 13. Player & Behavior Settings
+    // -------------------------------------------------------------------------
+    @Query("SELECT * FROM player_settings WHERE id = 1")
+    fun getPlayerSettings(): Flow<PlayerSettingsEntity?>
+
+    @Query("SELECT * FROM player_settings WHERE id = 1")
+    suspend fun getPlayerSettingsDirect(): PlayerSettingsEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun savePlayerSettings(entity: PlayerSettingsEntity)
 }

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
@@ -14,7 +15,6 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.dp
-import com.example.ui.theme.DarkBackground
 import com.example.ui.theme.MTPlayerTheme
 import com.example.update.ApkAsset
 import com.example.update.ReleaseInfo
@@ -44,7 +44,7 @@ class UpdateDialogScreenshotTest {
 
     private fun shot(name: String, content: @Composable () -> Unit) {
         rule.mainClock.autoAdvance = false
-        rule.setContent { MTPlayerTheme { Box(Modifier.fillMaxSize().background(DarkBackground).padding(vertical = 24.dp), contentAlignment = Alignment.Center) { content() } } }
+        rule.setContent { MTPlayerTheme { Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(vertical = 24.dp), contentAlignment = Alignment.Center) { content() } } }
         rule.mainClock.advanceTimeBy(900)
         try {
             val dir = File(System.getProperty("user.dir"), "build/screenshots").apply { mkdirs() }

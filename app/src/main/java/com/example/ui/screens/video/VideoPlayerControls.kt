@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -54,8 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.VideoItem
 import com.example.ui.components.formatDuration
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
+import com.example.ui.theme.MonoFontFamily
 
 enum class ScreenOrientationOption {
     SENSOR,
@@ -103,12 +101,12 @@ fun VideoPlayerTopBar(
 
         Spacer(modifier = Modifier.width(6.dp))
 
-        // Title and badge
+        // Title and badge (overlaying dark video scrim)
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = video.title,
                 style = MaterialTheme.typography.titleMedium,
-                color = TextPrimary,
+                color = Color.White,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -130,7 +128,7 @@ fun VideoPlayerTopBar(
                 Text(
                     text = video.folderName,
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary,
+                    color = Color.White.copy(alpha = 0.78f),
                     fontSize = 11.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -146,7 +144,6 @@ fun VideoPlayerTopBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            // Orientation Toggle
             IconButton(
                 onClick = onToggleRotation,
                 modifier = Modifier
@@ -161,7 +158,6 @@ fun VideoPlayerTopBar(
                 )
             }
 
-            // Audio track
             IconButton(
                 onClick = onAudioTrackClick,
                 modifier = Modifier
@@ -176,7 +172,6 @@ fun VideoPlayerTopBar(
                 )
             }
 
-            // Subtitles
             IconButton(
                 onClick = onSubtitleClick,
                 modifier = Modifier
@@ -191,7 +186,6 @@ fun VideoPlayerTopBar(
                 )
             }
 
-            // Speed
             IconButton(
                 onClick = onSpeedClick,
                 modifier = Modifier
@@ -216,7 +210,6 @@ fun VideoPlayerTopBar(
                 }
             }
 
-            // Aspect ratio
             IconButton(
                 onClick = onAspectRatioClick,
                 modifier = Modifier
@@ -231,7 +224,6 @@ fun VideoPlayerTopBar(
                 )
             }
 
-            // PiP mode
             if (isPipSupported) {
                 IconButton(
                     onClick = onPipClick,
@@ -248,7 +240,6 @@ fun VideoPlayerTopBar(
                 }
             }
 
-            // Video details
             IconButton(
                 onClick = onInfoClick,
                 modifier = Modifier
@@ -263,7 +254,6 @@ fun VideoPlayerTopBar(
                 )
             }
 
-            // Lock screen
             IconButton(
                 onClick = onLockClick,
                 modifier = Modifier
@@ -284,6 +274,7 @@ fun VideoPlayerTopBar(
 @Composable
 fun VideoPlayerCenterControls(
     isPlaying: Boolean,
+    seekSeconds: Int = 10,
     onRewind10s: () -> Unit,
     onPlayPause: () -> Unit,
     onForward10s: () -> Unit,
@@ -294,7 +285,6 @@ fun VideoPlayerCenterControls(
         horizontalArrangement = Arrangement.spacedBy(36.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Rewind 10s
         IconButton(
             onClick = onRewind10s,
             modifier = Modifier
@@ -306,13 +296,12 @@ fun VideoPlayerCenterControls(
         ) {
             Icon(
                 imageVector = Icons.Default.FastRewind,
-                contentDescription = "Rewind 10s",
+                contentDescription = "Rewind ${seekSeconds}s",
                 tint = Color.White,
                 modifier = Modifier.size(28.dp)
             )
         }
 
-        // Play / Pause
         Box(
             modifier = Modifier
                 .size(68.dp)
@@ -330,7 +319,6 @@ fun VideoPlayerCenterControls(
             )
         }
 
-        // Forward 10s
         IconButton(
             onClick = onForward10s,
             modifier = Modifier
@@ -342,7 +330,7 @@ fun VideoPlayerCenterControls(
         ) {
             Icon(
                 imageVector = Icons.Default.FastForward,
-                contentDescription = "Forward 10s",
+                contentDescription = "Forward ${seekSeconds}s",
                 tint = Color.White,
                 modifier = Modifier.size(28.dp)
             )
@@ -379,14 +367,14 @@ fun VideoPlayerBottomBar(
         ) {
             Text(
                 text = formatDuration(displayPos),
-                style = MaterialTheme.typography.bodySmall,
-                color = TextPrimary,
+                style = MaterialTheme.typography.bodySmall.copy(fontFamily = MonoFontFamily),
+                color = Color.White,
                 fontWeight = FontWeight.SemiBold
             )
             Text(
                 text = "-${formatDuration(remainingMs)}  /  ${formatDuration(durationMs)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = TextSecondary,
+                style = MaterialTheme.typography.bodySmall.copy(fontFamily = MonoFontFamily),
+                color = Color.White.copy(alpha = 0.78f),
                 fontSize = 11.sp
             )
         }
@@ -442,7 +430,7 @@ fun LockedFloatingUnlockButton(
                 Text(
                     text = "Controls Locked • Tap to Unlock",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = TextPrimary,
+                    color = Color.White,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp
                 )

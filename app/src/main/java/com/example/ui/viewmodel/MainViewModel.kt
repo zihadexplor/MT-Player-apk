@@ -1,11 +1,14 @@
 package com.example.ui.viewmodel
 
 import android.app.Application
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.data.database.PlayerSettingsEntity
 import com.example.data.model.Album
 import com.example.data.model.Artist
 import com.example.data.model.AudioTrack
+import com.example.data.model.Genre
 import com.example.data.model.MusicFolder
 import com.example.data.model.PlaybackState
 import com.example.data.model.Playlist
@@ -17,11 +20,22 @@ import com.example.data.model.VideoSort
 import com.example.data.repository.MediaRepository
 import com.example.data.repository.OfflineMediaRepository
 import com.example.player.MusicPlayerManager
+import com.example.player.equalizer.EqualizerManager
+import com.example.player.equalizer.EqualizerState
+import com.example.ui.image.ArtworkColorExtractor
+import com.example.ui.theme.DEFAULT_ACCENT_HEX
+import com.example.util.CrashLogger
+import com.example.util.LyricsParser
+import com.example.util.LyricsResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -29,12 +43,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: MediaRepository = OfflineMediaRepository(application.applicationContext)
     private val playerManager: MusicPlayerManager = MusicPlayerManager.getInstance(application.applicationContext)
-
-    private val equalizerManager: com.example.player.equalizer.EqualizerManager =
-        com.example.player.equalizer.EqualizerManager.getInstance(application.applicationContext)
+    private val equalizerManager: EqualizerManager = EqualizerManager.getInstance(application.applicationContext)
 
     val playbackState: StateFlow<PlaybackState> = playerManager.playbackState
-    val equalizerState: StateFlow<com.example.player.equalizer.EqualizerState> = equalizerManager.equalizerState
+    val equalizerState: StateFlow<EqualizerState> = equalizerManager.equalizerState
 
     val storageStats: StateFlow<StorageStats> = repository.storageStats
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), StorageStats())
@@ -46,6 +58,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val rawArtists: StateFlow<List<Artist>> = repository.artists
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val rawGenres: StateFlow<List<Genre>> = repository.genres
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val rawMusicFolders: StateFlow<List<MusicFolder>> = repository.musicFolders
@@ -92,19 +107,73 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     val sleepTimerRemainingSeconds = playerManager.sleepTimerRemainingSeconds
 
-    // Phase 11 Settings States
-    val gaplessPlayback = MutableStateFlow(true)
-    val autoPauseOnHeadset = MutableStateFlow(true)
-    val crossfadeSeconds = MutableStateFlow(0)
-    val hardwareAcceleration = MutableStateFlow(true)
-    val resumeVideo = MutableStateFlow(true)
-    val defaultVideoSpeed = MutableStateFlow(1.0f)
-    val doubleTapSeekSeconds = MutableStateFlow(10)
-    val gestureBrightness = MutableStateFlow(true)
-    val gestureVolume = MutableStateFlow(true)
-    val gestureScrub = MutableStateFlow(true)
-    val minAudioDurationSeconds = MutableStateFlow(30)
-    val autoScanOnLaunch = MutableStateFlow(true)
+    // Room-persisted Player & Personalization Settings
+    val playerSettings: StateFlow<PlayerSettingsEntity> = repository.playerSettings
+        .map { it ?: PlayerSettingsEntity() }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, PlayerSettingsEntity())
+
+    val gaplessPlayback: StateFlow<Boolean> = playerSettings
+        .map { it.gaplessPlayback }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val autoPauseOnHeadset: StateFlow<Boolean> = playerSettings
+        .map { it.autoPauseOnHeadset }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val crossfadeSeconds: StateFlow<Int> = playerSettings
+        .map { it.crossfadeSeconds }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    val hardwareAcceleration: StateFlow<Boolean> = playerSettings
+        .map { it.hardwareAcceleration }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val resumeVideo: StateFlow<Boolean> = playerSettings
+        .map { it.resumeVideo }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val defaultVideoSpeed: StateFlow<Float> = playerSettings
+        .map { it.defaultVideoSpeed }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 1.0f)
+
+    val doubleTapSeekSeconds: StateFlow<Int> = playerSettings
+        .map { it.doubleTapSeekSeconds }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 10)
+
+    val gestureBrightness: StateFlow<Boolean> = playerSettings
+        .map { it.gestureBrightness }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val gestureVolume: StateFlow<Boolean> = playerSettings
+        .map { it.gestureVolume }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val gestureScrub: StateFlow<Boolean> = playerSettings
+        .map { it.gestureScrub }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val minAudioDurationSeconds: StateFlow<Int> = playerSettings
+        .map { it.minAudioDurationSeconds }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 30)
+
+    val autoScanOnLaunch: StateFlow<Boolean> = playerSettings
+        .map { it.autoScanOnLaunch }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val dynamicArtworkColor: StateFlow<Boolean> = playerSettings
+        .map { it.dynamicArtworkColor }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val videoBackgroundAudio: StateFlow<Boolean> = playerSettings
+        .map { it.videoBackgroundAudio }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    // Dynamic Artwork Seed Color & Local Lyrics for currently playing track
+    private val _dynamicArtworkSeedColor = MutableStateFlow<Color?>(null)
+    val dynamicArtworkSeedColor: StateFlow<Color?> = _dynamicArtworkSeedColor.asStateFlow()
+
+    private val _currentLyrics = MutableStateFlow(LyricsResult())
+    val currentLyrics: StateFlow<LyricsResult> = _currentLyrics.asStateFlow()
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery.asStateFlow()
@@ -115,7 +184,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _videoSort = MutableStateFlow(VideoSort.DATE_DESC)
     val videoSort = _videoSort.asStateFlow()
 
-    private val _activeMusicTab = MutableStateFlow(0) // 0: Tracks, 1: Albums, 2: Artists, 3: Folders, 4: Favorites
+    private val _activeMusicTab = MutableStateFlow(0) // 0: Tracks, 1: Albums, 2: Artists, 3: Genres, 4: Folders, 5: Favorites
     val activeMusicTab = _activeMusicTab.asStateFlow()
 
     private val _activeVideoTab = MutableStateFlow(0) // 0: All Videos, 1: Folders, 2: Continue, 3: Recent, 4: Favorites
@@ -157,6 +226,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _showAddToPlaylistDialog = MutableStateFlow(false)
     val showAddToPlaylistDialog = _showAddToPlaylistDialog.asStateFlow()
 
+    @Volatile
+    private var didRestoreLastTrack = false
+
     // Filtered & Sorted Tracks
     val filteredAudioTracks: StateFlow<List<AudioTrack>> = combine(
         rawAudioTracks,
@@ -166,8 +238,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val filtered = if (query.isBlank()) tracks
         else tracks.filter {
             it.title.contains(query, ignoreCase = true) ||
-            it.artist.contains(query, ignoreCase = true) ||
-            it.album.contains(query, ignoreCase = true)
+                it.artist.contains(query, ignoreCase = true) ||
+                it.album.contains(query, ignoreCase = true) ||
+                it.genre.contains(query, ignoreCase = true)
         }
 
         when (sort) {
@@ -187,7 +260,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (query.isBlank()) albums
         else albums.filter {
             it.name.contains(query, ignoreCase = true) ||
-            it.artist.contains(query, ignoreCase = true)
+                it.artist.contains(query, ignoreCase = true)
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -201,6 +274,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val filteredGenres: StateFlow<List<Genre>> = combine(
+        rawGenres,
+        _searchQuery
+    ) { genres, query ->
+        if (query.isBlank()) genres
+        else genres.filter {
+            it.name.contains(query, ignoreCase = true)
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     val filteredFolders: StateFlow<List<MusicFolder>> = combine(
         rawMusicFolders,
         _searchQuery
@@ -208,7 +291,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (query.isBlank()) folders
         else folders.filter {
             it.name.contains(query, ignoreCase = true) ||
-            it.path.contains(query, ignoreCase = true)
+                it.path.contains(query, ignoreCase = true)
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -220,7 +303,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val filtered = if (query.isBlank()) videos
         else videos.filter {
             it.title.contains(query, ignoreCase = true) ||
-            it.folderName.contains(query, ignoreCase = true)
+                it.folderName.contains(query, ignoreCase = true)
         }
 
         when (sort) {
@@ -240,7 +323,99 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 repository.recordTrackPlayed(trackId)
             }
         }
-        scanMedia()
+        playerManager.onSavePosition = { songId, posMs, durMs ->
+            viewModelScope.launch {
+                repository.saveMusicPlaybackPosition(songId, posMs, durMs)
+            }
+        }
+
+        // Sync Room audio behavior settings to ExoPlayer
+        viewModelScope.launch {
+            playerSettings
+                .map { Triple(it.gaplessPlayback, it.autoPauseOnHeadset, it.crossfadeSeconds) }
+                .distinctUntilChanged()
+                .collectLatest { (gapless, autoPause, crossfade) ->
+                    playerManager.configureAudioBehavior(gapless, autoPause, crossfade)
+                }
+        }
+
+        // Load dynamic artwork seed color and local lyrics whenever current track changes
+        viewModelScope.launch {
+            playbackState
+                .map { it.currentTrack }
+                .distinctUntilChanged { old, new -> old?.id == new?.id }
+                .collectLatest { track ->
+                    if (track == null) {
+                        _dynamicArtworkSeedColor.value = null
+                        _currentLyrics.value = LyricsResult()
+                    } else {
+                        _dynamicArtworkSeedColor.value = ArtworkColorExtractor.extractSeedColor(getApplication(), track)
+                        _currentLyrics.value = LyricsParser.loadLyricsForTrack(
+                            filePath = track.filePath,
+                            title = track.title,
+                            artist = track.artist
+                        )
+                    }
+                }
+        }
+
+        // Initial launch scan if enabled in persisted settings
+        viewModelScope.launch {
+            val savedSettings = repository.playerSettings.first()
+            if (savedSettings?.autoScanOnLaunch != false) {
+                repository.scanDeviceMedia()
+            }
+        }
+
+        // Restore last music playback track & position once tracks finish loading
+        viewModelScope.launch {
+            combine(rawAudioTracks, repository.lastMusicPlayback) { tracks, lastPos ->
+                tracks to lastPos
+            }.collectLatest { (tracks, lastPos) ->
+                if (!didRestoreLastTrack && tracks.isNotEmpty() && lastPos != null && playbackState.value.currentTrack == null) {
+                    val match = tracks.firstOrNull { it.id == lastPos.songId }
+                    if (match != null) {
+                        didRestoreLastTrack = true
+                        playerManager.restoreLastTrack(match, lastPos.positionMs)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun updateSettings(transform: (PlayerSettingsEntity) -> PlayerSettingsEntity) {
+        val updated = transform(playerSettings.value)
+        viewModelScope.launch {
+            repository.savePlayerSettings(updated)
+        }
+    }
+
+    fun setGaplessPlayback(enabled: Boolean) = updateSettings { it.copy(gaplessPlayback = enabled) }
+    fun setAutoPauseOnHeadset(enabled: Boolean) = updateSettings { it.copy(autoPauseOnHeadset = enabled) }
+    fun setCrossfadeSeconds(seconds: Int) = updateSettings { it.copy(crossfadeSeconds = seconds) }
+    fun setHardwareAcceleration(enabled: Boolean) = updateSettings { it.copy(hardwareAcceleration = enabled) }
+    fun setResumeVideo(enabled: Boolean) = updateSettings { it.copy(resumeVideo = enabled) }
+    fun setDefaultVideoSpeed(speed: Float) = updateSettings { it.copy(defaultVideoSpeed = speed) }
+    fun setDoubleTapSeekSeconds(seconds: Int) = updateSettings { it.copy(doubleTapSeekSeconds = seconds) }
+    fun setGestureBrightness(enabled: Boolean) = updateSettings { it.copy(gestureBrightness = enabled) }
+    fun setGestureVolume(enabled: Boolean) = updateSettings { it.copy(gestureVolume = enabled) }
+    fun setGestureScrub(enabled: Boolean) = updateSettings { it.copy(gestureScrub = enabled) }
+    fun setAutoScanOnLaunch(enabled: Boolean) = updateSettings { it.copy(autoScanOnLaunch = enabled) }
+    fun setDynamicArtworkColor(enabled: Boolean) = updateSettings { it.copy(dynamicArtworkColor = enabled) }
+    fun setVideoBackgroundAudio(enabled: Boolean) = updateSettings { it.copy(videoBackgroundAudio = enabled) }
+
+    fun setMinAudioDurationSeconds(seconds: Int) {
+        val updated = playerSettings.value.copy(minAudioDurationSeconds = seconds)
+        viewModelScope.launch {
+            repository.savePlayerSettings(updated)
+            repository.scanDeviceMedia()
+        }
+    }
+
+    fun readCrashLogs(): String = CrashLogger.readLogs(getApplication())
+
+    fun clearCrashLogs() {
+        CrashLogger.clearLogs(getApplication())
     }
 
     fun onSearchQueryChange(query: String) {
@@ -302,7 +477,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun playVideo(video: VideoItem) {
-        // Pause music playback if active
         if (playbackState.value.isPlaying) {
             playerManager.pause()
         }
@@ -352,6 +526,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun removeFromQueue(index: Int) {
         playerManager.removeFromQueue(index)
+    }
+
+    fun reorderQueue(fromIndex: Int, toIndex: Int) {
+        playerManager.reorderQueue(fromIndex, toIndex)
+    }
+
+    fun clearQueue() {
+        playerManager.clearQueue()
     }
 
     fun togglePlayPause() {
@@ -568,7 +750,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun saveThemePreference(themeMode: String, accentColorHex: String = "#1DB954", pureBlackAmoled: Boolean = true) {
+    fun saveThemePreference(themeMode: String, accentColorHex: String = DEFAULT_ACCENT_HEX, pureBlackAmoled: Boolean = false) {
         viewModelScope.launch {
             repository.saveThemePreference(themeMode, accentColorHex, pureBlackAmoled)
         }
@@ -604,5 +786,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     override fun onCleared() {
         super.onCleared()
         playerManager.onTrackChanged = null
+        playerManager.onSavePosition = null
     }
 }

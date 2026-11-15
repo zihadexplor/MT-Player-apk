@@ -21,11 +21,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Album
+import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SelectAll
@@ -53,17 +53,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import com.example.data.model.Album
 import com.example.data.model.Artist
 import com.example.data.model.AudioTrack
+import com.example.data.model.Genre
 import com.example.data.model.MusicFolder
 import com.example.data.model.StorageStats
 import com.example.data.model.TrackSort
@@ -71,21 +71,14 @@ import com.example.ui.components.BatchActionBar
 import com.example.ui.components.EmptyMediaView
 import com.example.ui.components.PermissionPromptCard
 import com.example.ui.components.TrackItemRow
-import com.example.ui.theme.DarkOutline
-import com.example.ui.theme.DarkOutlineVariant
-import com.example.ui.theme.DarkSurface
-import com.example.ui.theme.DarkSurfaceContainerHigh
-import com.example.ui.theme.DarkSurfaceVariant
-import com.example.ui.theme.SpotifyGreen
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TextTertiary
+import com.example.ui.image.AudioArtThumb
 
 @Composable
 fun MusicScreen(
     tracks: List<AudioTrack>,
     albums: List<Album>,
     artists: List<Artist>,
+    genres: List<Genre> = emptyList(),
     folders: List<MusicFolder>,
     stats: StorageStats,
     currentPlayingTrack: AudioTrack?,
@@ -111,15 +104,18 @@ fun MusicScreen(
     onRequestPermission: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val tabs = listOf("Tracks", "Albums", "Artists", "Folders", "Favorites")
+    val tabs = listOf("Tracks", "Albums", "Artists", "Genres", "Folders", "Favorites")
     var showSortMenu by remember { mutableStateOf(false) }
 
     var expandedAlbumId by remember { mutableStateOf<Long?>(null) }
     var expandedArtistName by remember { mutableStateOf<String?>(null) }
+    var expandedGenreName by remember { mutableStateOf<String?>(null) }
     var expandedFolderPath by remember { mutableStateOf<String?>(null) }
 
     val favoriteTracks = remember(tracks) { tracks.filter { it.isFavorite } }
-    val currentTrackList = if (activeTab == 4) favoriteTracks else tracks
+    val safeActiveTab = activeTab.coerceIn(0, tabs.lastIndex)
+    val isFavoritesTab = safeActiveTab == 5
+    val currentTrackList = if (isFavoritesTab) favoriteTracks else tracks
 
     Column(
         modifier = modifier
@@ -128,14 +124,14 @@ fun MusicScreen(
     ) {
         // Tab Row
         ScrollableTabRow(
-            selectedTabIndex = activeTab,
+            selectedTabIndex = safeActiveTab,
             containerColor = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.primary,
             edgePadding = 16.dp,
             indicator = { tabPositions ->
-                if (activeTab < tabPositions.size) {
+                if (safeActiveTab < tabPositions.size) {
                     TabRowDefaults.SecondaryIndicator(
-                        Modifier.tabIndicatorOffset(tabPositions[activeTab]),
+                        Modifier.tabIndicatorOffset(tabPositions[safeActiveTab]),
                         color = MaterialTheme.colorScheme.primary,
                         height = 3.dp
                     )
@@ -145,14 +141,14 @@ fun MusicScreen(
         ) {
             tabs.forEachIndexed { index, title ->
                 Tab(
-                    selected = activeTab == index,
+                    selected = safeActiveTab == index,
                     onClick = { onTabChange(index) },
                     text = {
                         Text(
                             text = title,
                             style = MaterialTheme.typography.titleSmall,
-                            fontWeight = if (activeTab == index) FontWeight.Bold else FontWeight.Normal,
-                            color = if (activeTab == index) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            fontWeight = if (safeActiveTab == index) FontWeight.Bold else FontWeight.Normal,
+                            color = if (safeActiveTab == index) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     },
                     modifier = Modifier.testTag("music_tab_$index")
@@ -169,7 +165,7 @@ fun MusicScreen(
         }
 
         // Header controls for Tracks & Favorites
-        if (activeTab == 0 || activeTab == 4) {
+        if (safeActiveTab == 0 || isFavoritesTab) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -180,7 +176,7 @@ fun MusicScreen(
                 Text(
                     text = "${currentTrackList.size} tracks",
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextTertiary
+                    color = MaterialTheme.colorScheme.outline
                 )
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -305,16 +301,16 @@ fun MusicScreen(
         }
 
         // Tab Content
-        when (activeTab) {
-            0, 4 -> {
+        when (safeActiveTab) {
+            0, 5 -> {
                 // Tracks or Favorites Tab
                 if (currentTrackList.isEmpty()) {
                     EmptyMediaView(
-                        title = if (activeTab == 4) "No favorite songs yet" else "No audio files detected",
-                        subtitle = if (activeTab == 4) "Tap the heart icon on any song to add it to your favorites."
+                        title = if (isFavoritesTab) "No favorite songs yet" else "No audio files detected",
+                        subtitle = if (isFavoritesTab) "Tap the heart icon on any song to add it to your favorites."
                         else "Place MP3, FLAC, M4A, OGG, or WAV files in local storage and tap Rescan.",
-                        buttonText = if (activeTab == 4) "Browse Songs" else "Scan Storage",
-                        onButtonClick = if (activeTab == 4) { { onTabChange(0) } } else onRescanClick,
+                        buttonText = if (isFavoritesTab) "Browse Songs" else "Scan Storage",
+                        onButtonClick = if (isFavoritesTab) { { onTabChange(0) } } else onRescanClick,
                         modifier = Modifier.weight(1f)
                     )
                 } else {
@@ -367,6 +363,12 @@ fun MusicScreen(
                     ) {
                         items(albums, key = { "al_${it.id}_${it.name}" }) { album ->
                             val isExpanded = expandedAlbumId == album.id
+                            val artThumb = remember(album.id, album.albumArtUri, album.tracks) {
+                                AudioArtThumb(
+                                    trackUri = album.tracks.firstOrNull()?.uri.orEmpty(),
+                                    albumArtUri = album.albumArtUri
+                                )
+                            }
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -388,21 +390,28 @@ fun MusicScreen(
                                                 .background(MaterialTheme.colorScheme.surfaceVariant),
                                             contentAlignment = Alignment.Center
                                         ) {
-                                            if (!album.albumArtUri.isNullOrBlank()) {
-                                                AsyncImage(
-                                                    model = album.albumArtUri,
-                                                    contentDescription = album.name,
-                                                    contentScale = ContentScale.Crop,
-                                                    modifier = Modifier.fillMaxSize()
-                                                )
-                                            } else {
-                                                Icon(
-                                                    imageVector = Icons.Default.Album,
-                                                    contentDescription = null,
-                                                    tint = MaterialTheme.colorScheme.primary,
-                                                    modifier = Modifier.size(28.dp)
-                                                )
-                                            }
+                                            SubcomposeAsyncImage(
+                                                model = artThumb,
+                                                contentDescription = album.name,
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier.fillMaxSize(),
+                                                error = {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Album,
+                                                        contentDescription = null,
+                                                        tint = MaterialTheme.colorScheme.primary,
+                                                        modifier = Modifier.size(28.dp)
+                                                    )
+                                                },
+                                                loading = {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Album,
+                                                        contentDescription = null,
+                                                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                                                        modifier = Modifier.size(26.dp)
+                                                    )
+                                                }
+                                            )
                                         }
 
                                         Spacer(modifier = Modifier.width(12.dp))
@@ -412,21 +421,21 @@ fun MusicScreen(
                                                 text = album.name,
                                                 style = MaterialTheme.typography.titleMedium,
                                                 fontWeight = FontWeight.Bold,
-                                                color = TextPrimary,
+                                                color = MaterialTheme.colorScheme.onSurface,
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis
                                             )
                                             Text(
                                                 text = "${album.artist} • ${album.trackCount} tracks",
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = TextSecondary
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
 
                                         Icon(
                                             imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                                             contentDescription = if (isExpanded) "Collapse" else "Expand",
-                                            tint = TextTertiary
+                                            tint = MaterialTheme.colorScheme.outline
                                         )
                                     }
 
@@ -442,18 +451,26 @@ fun MusicScreen(
                                                             onTrackClick(album.tracks.first(), album.tracks)
                                                         }
                                                     },
-                                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                                    colors = ButtonDefaults.buttonColors(
+                                                        containerColor = MaterialTheme.colorScheme.primary,
+                                                        contentColor = MaterialTheme.colorScheme.onPrimary
+                                                    ),
                                                     shape = RoundedCornerShape(16.dp),
                                                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                                                 ) {
                                                     Icon(
                                                         imageVector = Icons.Default.PlayArrow,
                                                         contentDescription = null,
-                                                        tint = Color.Black,
+                                                        tint = MaterialTheme.colorScheme.onPrimary,
                                                         modifier = Modifier.size(16.dp)
                                                     )
                                                     Spacer(modifier = Modifier.width(4.dp))
-                                                    Text("Play Album", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                                    Text(
+                                                        text = "Play Album",
+                                                        color = MaterialTheme.colorScheme.onPrimary,
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 12.sp
+                                                    )
                                                 }
                                             }
 
@@ -535,19 +552,19 @@ fun MusicScreen(
                                                 text = artist.name,
                                                 style = MaterialTheme.typography.titleMedium,
                                                 fontWeight = FontWeight.Bold,
-                                                color = TextPrimary
+                                                color = MaterialTheme.colorScheme.onSurface
                                             )
                                             Text(
                                                 text = "${artist.trackCount} tracks • ${artist.albumCount} albums",
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = TextSecondary
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
 
                                         Icon(
                                             imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                                             contentDescription = if (isExpanded) "Collapse" else "Expand",
-                                            tint = TextTertiary
+                                            tint = MaterialTheme.colorScheme.outline
                                         )
                                     }
 
@@ -563,18 +580,26 @@ fun MusicScreen(
                                                             onTrackClick(artist.tracks.first(), artist.tracks)
                                                         }
                                                     },
-                                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                                    colors = ButtonDefaults.buttonColors(
+                                                        containerColor = MaterialTheme.colorScheme.primary,
+                                                        contentColor = MaterialTheme.colorScheme.onPrimary
+                                                    ),
                                                     shape = RoundedCornerShape(16.dp),
                                                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                                                 ) {
                                                     Icon(
                                                         imageVector = Icons.Default.PlayArrow,
                                                         contentDescription = null,
-                                                        tint = Color.Black,
+                                                        tint = MaterialTheme.colorScheme.onPrimary,
                                                         modifier = Modifier.size(16.dp)
                                                     )
                                                     Spacer(modifier = Modifier.width(4.dp))
-                                                    Text("Play All", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                                    Text(
+                                                        text = "Play All",
+                                                        color = MaterialTheme.colorScheme.onPrimary,
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 12.sp
+                                                    )
                                                 }
                                             }
 
@@ -601,6 +626,135 @@ fun MusicScreen(
             }
 
             3 -> {
+                // Genres Tab
+                if (genres.isEmpty()) {
+                    EmptyMediaView(
+                        title = "No genres detected",
+                        subtitle = "ID3 genre tags will automatically group your tracks when available.",
+                        buttonText = "Rescan Media",
+                        onButtonClick = onRescanClick,
+                        modifier = Modifier.weight(1f)
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .testTag("genres_list"),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(genres, key = { "gn_${it.name}" }) { genre ->
+                            val isExpanded = expandedGenreName == genre.name
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable {
+                                        expandedGenreName = if (isExpanded) null else genre.name
+                                    }
+                                    .testTag("genre_card_${genre.name}"),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                                border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(46.dp)
+                                                .clip(RoundedCornerShape(10.dp))
+                                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Category,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(22.dp)
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.width(12.dp))
+
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = genre.name,
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                            Text(
+                                                text = "${genre.trackCount} songs",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+
+                                        Icon(
+                                            imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                            contentDescription = if (isExpanded) "Collapse" else "Expand",
+                                            tint = MaterialTheme.colorScheme.outline
+                                        )
+                                    }
+
+                                    AnimatedVisibility(visible = isExpanded) {
+                                        Column(modifier = Modifier.padding(top = 10.dp)) {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.End
+                                            ) {
+                                                Button(
+                                                    onClick = {
+                                                        if (genre.tracks.isNotEmpty()) {
+                                                            onTrackClick(genre.tracks.first(), genre.tracks)
+                                                        }
+                                                    },
+                                                    colors = ButtonDefaults.buttonColors(
+                                                        containerColor = MaterialTheme.colorScheme.primary,
+                                                        contentColor = MaterialTheme.colorScheme.onPrimary
+                                                    ),
+                                                    shape = RoundedCornerShape(16.dp),
+                                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.PlayArrow,
+                                                        contentDescription = null,
+                                                        tint = MaterialTheme.colorScheme.onPrimary,
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(4.dp))
+                                                    Text(
+                                                        text = "Play Genre",
+                                                        color = MaterialTheme.colorScheme.onPrimary,
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 12.sp
+                                                    )
+                                                }
+                                            }
+
+                                            Spacer(modifier = Modifier.height(6.dp))
+
+                                            genre.tracks.forEach { track ->
+                                                TrackItemRow(
+                                                    track = track,
+                                                    isSelected = currentPlayingTrack?.id == track.id,
+                                                    onTrackClick = { onTrackClick(track, genre.tracks) },
+                                                    onToggleFavorite = { onToggleFavorite(track.id) },
+                                                    onLongClick = { onTrackOptionsClick(track) },
+                                                    onMoreOptionsClick = { onTrackOptionsClick(track) }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        item { Spacer(modifier = Modifier.height(110.dp)) }
+                    }
+                }
+            }
+
+            4 -> {
                 // Folders Tab
                 if (folders.isEmpty()) {
                     EmptyMediaView(
@@ -656,19 +810,19 @@ fun MusicScreen(
                                                 text = folder.name,
                                                 style = MaterialTheme.typography.titleMedium,
                                                 fontWeight = FontWeight.Bold,
-                                                color = TextPrimary
+                                                color = MaterialTheme.colorScheme.onSurface
                                             )
                                             Text(
                                                 text = "${folder.trackCount} songs in this folder",
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = TextSecondary
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
 
                                         Icon(
                                             imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                                             contentDescription = if (isExpanded) "Collapse" else "Expand",
-                                            tint = TextTertiary
+                                            tint = MaterialTheme.colorScheme.outline
                                         )
                                     }
 
@@ -684,18 +838,26 @@ fun MusicScreen(
                                                             onTrackClick(folder.tracks.first(), folder.tracks)
                                                         }
                                                     },
-                                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                                    colors = ButtonDefaults.buttonColors(
+                                                        containerColor = MaterialTheme.colorScheme.primary,
+                                                        contentColor = MaterialTheme.colorScheme.onPrimary
+                                                    ),
                                                     shape = RoundedCornerShape(16.dp),
                                                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                                                 ) {
                                                     Icon(
                                                         imageVector = Icons.Default.PlayArrow,
                                                         contentDescription = null,
-                                                        tint = Color.Black,
+                                                        tint = MaterialTheme.colorScheme.onPrimary,
                                                         modifier = Modifier.size(16.dp)
                                                     )
                                                     Spacer(modifier = Modifier.width(4.dp))
-                                                    Text("Play Folder", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                                    Text(
+                                                        text = "Play Folder",
+                                                        color = MaterialTheme.colorScheme.onPrimary,
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 12.sp
+                                                    )
                                                 }
                                             }
 

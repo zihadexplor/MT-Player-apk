@@ -46,14 +46,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.BuildConfig
-import com.example.ui.theme.DarkOutline
-import com.example.ui.theme.DarkOutlineVariant
-import com.example.ui.theme.DarkSurfaceContainerHigh
-import com.example.ui.theme.DarkSurfaceVariant
-import com.example.ui.theme.SpotifyGreen
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TextTertiary
 import com.example.update.UpdateManager
 import com.example.update.UpdateState
 
@@ -66,25 +58,35 @@ fun UpdateSettingsCard(modifier: Modifier = Modifier) {
     val autoCheck by manager.autoCheckEnabled.collectAsStateWithLifecycle()
     val lastChecked by manager.lastCheckedAt.collectAsStateWithLifecycle()
 
+    val cs = MaterialTheme.colorScheme
+
     Card(
         modifier = modifier.fillMaxWidth().testTag("settings_updates_card"),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkSurfaceContainerHigh),
-        border = BorderStroke(0.5.dp, DarkOutline),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = cs.surfaceContainerHigh),
+        border = BorderStroke(0.5.dp, cs.outlineVariant),
     ) {
         Column(Modifier.padding(14.dp)) {
             // Current version
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
-                    Modifier.size(40.dp).clip(CircleShape).background(SpotifyGreen.copy(alpha = 0.15f)),
+                    Modifier.size(40.dp).clip(CircleShape).background(cs.primary.copy(alpha = 0.16f)),
                     contentAlignment = Alignment.Center,
-                ) { Icon(Icons.Default.SystemUpdate, contentDescription = null, tint = SpotifyGreen, modifier = Modifier.size(22.dp)) }
+                ) {
+                    Icon(Icons.Default.SystemUpdate, contentDescription = null, tint = cs.primary, modifier = Modifier.size(22.dp))
+                }
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Version ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.titleMedium, color = TextPrimary, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "Version ${BuildConfig.VERSION_NAME}",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = cs.onSurface,
+                        fontWeight = FontWeight.SemiBold,
+                    )
                     Text(
                         "Build ${BuildConfig.VERSION_CODE} · ${if (manager.usesAuthenticatedChannel) "Private" else "Public"} GitHub channel",
-                        style = MaterialTheme.typography.bodySmall, color = TextSecondary,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = cs.onSurfaceVariant,
                     )
                 }
             }
@@ -101,7 +103,7 @@ fun UpdateSettingsCard(modifier: Modifier = Modifier) {
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("Check for updates", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+                    Text("Check for updates", style = MaterialTheme.typography.titleMedium, color = cs.onSurface)
                     Text(statusText(state, lastChecked), style = MaterialTheme.typography.bodySmall, color = statusColor(state))
                 }
                 Spacer(Modifier.width(12.dp))
@@ -114,7 +116,9 @@ fun UpdateSettingsCard(modifier: Modifier = Modifier) {
                 LinearProgressIndicator(
                     progress = { downloading.progress },
                     modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
-                    color = SpotifyGreen, trackColor = DarkSurfaceVariant, strokeCap = StrokeCap.Round,
+                    color = cs.primary,
+                    trackColor = cs.surfaceVariant,
+                    strokeCap = StrokeCap.Round,
                 )
             }
 
@@ -122,16 +126,18 @@ fun UpdateSettingsCard(modifier: Modifier = Modifier) {
 
             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Check automatically", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
-                    Text("Look for new versions each time the app opens", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    Text("Check automatically", style = MaterialTheme.typography.titleMedium, color = cs.onSurface)
+                    Text("Look for new versions each time the app opens", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
                 }
                 Spacer(Modifier.width(12.dp))
                 Switch(
                     checked = autoCheck,
                     onCheckedChange = manager::setAutoCheckEnabled,
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color.Black, checkedTrackColor = SpotifyGreen,
-                        uncheckedThumbColor = TextTertiary, uncheckedTrackColor = DarkSurfaceVariant,
+                        checkedThumbColor = cs.onPrimary,
+                        checkedTrackColor = cs.primary,
+                        uncheckedThumbColor = cs.onSurfaceVariant,
+                        uncheckedTrackColor = cs.surfaceVariant,
                     ),
                     modifier = Modifier.testTag("toggle_auto_update"),
                 )
@@ -151,10 +157,10 @@ fun UpdateSettingsCard(modifier: Modifier = Modifier) {
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("Release history", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
-                    Text("View all versions and changelogs on GitHub", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    Text("Release history", style = MaterialTheme.typography.titleMedium, color = cs.onSurface)
+                    Text("View all versions and changelogs on GitHub", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
                 }
-                Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(20.dp))
+                Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, tint = cs.onSurfaceVariant, modifier = Modifier.size(20.dp))
             }
         }
     }
@@ -162,16 +168,17 @@ fun UpdateSettingsCard(modifier: Modifier = Modifier) {
 
 @Composable
 private fun StatusIcon(state: UpdateState) {
+    val cs = MaterialTheme.colorScheme
     when (state) {
-        is UpdateState.Checking -> CircularProgressIndicator(Modifier.size(22.dp), color = SpotifyGreen, strokeWidth = 2.5.dp)
-        is UpdateState.UpToDate -> Icon(Icons.Default.CheckCircle, null, tint = SpotifyGreen, modifier = Modifier.size(22.dp))
+        is UpdateState.Checking -> CircularProgressIndicator(Modifier.size(22.dp), color = cs.primary, strokeWidth = 2.5.dp)
+        is UpdateState.UpToDate -> Icon(Icons.Default.CheckCircle, null, tint = cs.primary, modifier = Modifier.size(22.dp))
         is UpdateState.Available, is UpdateState.ReadyToInstall ->
-            Box(Modifier.clip(RoundedCornerShape(50)).background(SpotifyGreen).padding(horizontal = 10.dp, vertical = 4.dp)) {
-                Text("NEW", style = MaterialTheme.typography.labelMedium, color = Color.Black, fontWeight = FontWeight.Black)
+            Box(Modifier.clip(RoundedCornerShape(50)).background(cs.primary).padding(horizontal = 10.dp, vertical = 4.dp)) {
+                Text("NEW", style = MaterialTheme.typography.labelMedium, color = cs.onPrimary, fontWeight = FontWeight.Black)
             }
-        is UpdateState.Downloading -> Icon(Icons.Default.CloudDownload, null, tint = SpotifyGreen, modifier = Modifier.size(22.dp))
-        is UpdateState.Failed -> Icon(Icons.Default.ErrorOutline, null, tint = Color(0xFFFF6B6B), modifier = Modifier.size(22.dp))
-        else -> Icon(Icons.Default.SystemUpdate, null, tint = SpotifyGreen, modifier = Modifier.size(22.dp))
+        is UpdateState.Downloading -> Icon(Icons.Default.CloudDownload, null, tint = cs.primary, modifier = Modifier.size(22.dp))
+        is UpdateState.Failed -> Icon(Icons.Default.ErrorOutline, null, tint = cs.error, modifier = Modifier.size(22.dp))
+        else -> Icon(Icons.Default.SystemUpdate, null, tint = cs.primary, modifier = Modifier.size(22.dp))
     }
 }
 
@@ -186,13 +193,14 @@ private fun statusText(state: UpdateState, lastChecked: Long): String = when (st
     else -> "Last checked: ${formatRelative(lastChecked)}"
 }
 
+@Composable
 private fun statusColor(state: UpdateState): Color = when (state) {
-    is UpdateState.Available, is UpdateState.ReadyToInstall, is UpdateState.Downloading -> SpotifyGreen
-    is UpdateState.Failed -> Color(0xFFFF6B6B)
-    else -> TextSecondary
+    is UpdateState.Available, is UpdateState.ReadyToInstall, is UpdateState.Downloading -> MaterialTheme.colorScheme.primary
+    is UpdateState.Failed -> MaterialTheme.colorScheme.error
+    else -> MaterialTheme.colorScheme.onSurfaceVariant
 }
 
 @Composable
 private fun Divider() {
-    Box(Modifier.fillMaxWidth().padding(vertical = 10.dp).height(0.5.dp).background(DarkOutlineVariant))
+    Box(Modifier.fillMaxWidth().padding(vertical = 10.dp).height(0.5.dp).background(MaterialTheme.colorScheme.outlineVariant))
 }

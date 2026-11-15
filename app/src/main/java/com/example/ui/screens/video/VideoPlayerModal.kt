@@ -19,8 +19,6 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
-import kotlin.math.roundToInt
-import kotlinx.coroutines.Job
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -29,8 +27,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -49,29 +50,40 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.app.PictureInPictureModeChangedInfo
 import androidx.core.util.Consumer
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.Format
 import androidx.media3.common.MediaItem
-import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.example.data.model.VideoItem
+import com.example.util.SubtitleCue
+import com.example.util.SubtitleParser
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 @OptIn(UnstableApi::class)
 @Composable
@@ -79,18 +91,30 @@ fun VideoPlayerModal(
     video: VideoItem,
     onClose: () -> Unit,
     onProgressUpdate: (String, Long, Long) -> Unit,
+    defaultSpeed: Float = 1.0f,
+    resumePlayback: Boolean = true,
+    doubleTapSeekSeconds: Int = 10,
+    gestureBrightnessEnabled: Boolean = true,
+    gestureVolumeEnabled: Boolean = true,
+    gestureScrubEnabled: Boolean = true,
+    hardwareAcceleration: Boolean = true,
+    videoBackgroundAudio: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val coroutineScope = rememberCoroutineScope()
     val activity = context as? Activity
     val audioManager = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
     val maxVolume = remember { audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC) }
     val safeMaxVolume = if (maxVolume > 0) maxVolume else 1
 
+    val initialPositionMs = if (resumePlayback) video.playbackPositionMs else 0L
+    val seekDeltaMs = (doubleTapSeekSeconds.coerceAtLeast(1)) * 1000L
+
     // Playback state
     var isPlaying by remember { mutableStateOf(true) }
-    var currentPositionMs by remember { mutableLongStateOf(video.playbackPositionMs) }
+    var currentPositionMs by remember { mutableLongStateOf(initialPositionMs) }
     var durationMs by remember { mutableLongStateOf(if (video.durationMs > 0) video.durationMs else 1L) }
     var isBuffering by remember { mutableStateOf(false) }
     var isControlsVisible by remember { mutableStateOf(true) }
@@ -104,7 +128,7 @@ fun VideoPlayerModal(
 
     // Screen adjustments
     var resizeMode by remember { mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT) }
-    var currentSpeed by remember { mutableFloatStateOf(1.0f) }
+    var currentSpeed by remember(video.id, defaultSpeed) { mutableFloatStateOf(defaultSpeed) }
     var isScreenLocked by remember { mutableStateOf(false) }
     var isLockedUnlockPillVisible by remember { mutableStateOf(false) }
     var orientationMode by remember { mutableStateOf(ScreenOrientationOption.LANDSCAPE) }
@@ -115,6 +139,8 @@ fun VideoPlayerModal(
     var subtitleTracksList by remember { mutableStateOf<List<SubtitleTrackInfo>>(emptyList()) }
     var isSubtitlesDisabled by remember { mutableStateOf(false) }
     var externalSubtitleName by remember { mutableStateOf<String?>(null) }
+    var externalSubtitleCues by remember { mutableStateOf<List<SubtitleCue>>(emptyList()) }
+    var useExternalSubtitles by remember { mutableStateOf(false) }
     var subtitleDelayMs by remember { mutableLongStateOf(0L) }
 
     // HUD States & Auto-hide Jobs
@@ -157,7 +183,12 @@ fun VideoPlayerModal(
             }
         }
         val filter = IntentFilter("android.media.VOLUME_CHANGED_ACTION")
-        context.registerReceiver(receiver, filter)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("UnspecifiedRegisterReceiverFlag")
+            context.registerReceiver(receiver, filter)
+        }
         onDispose {
             try {
                 context.unregisterReceiver(receiver)
@@ -176,7 +207,7 @@ fun VideoPlayerModal(
     var toastMessage by remember { mutableStateOf("") }
     var isToastVisible by remember { mutableStateOf(false) }
 
-    var showResumePill by remember { mutableStateOf(video.playbackPositionMs > 5000L) }
+    var showResumePill by remember { mutableStateOf(resumePlayback && video.playbackPositionMs > 5000L) }
 
     // Dialog sheets
     var showSpeedDialog by remember { mutableStateOf(false) }
@@ -187,7 +218,7 @@ fun VideoPlayerModal(
 
     val isPipSupported = remember {
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-                context.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
+            context.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
     }
 
     fun showToast(msg: String) {
@@ -199,20 +230,54 @@ fun VideoPlayerModal(
         }
     }
 
-    // Initialize ExoPlayer
-    val exoPlayer = remember(video.id) {
-        ExoPlayer.Builder(context).build().apply {
-            val mediaItem = MediaItem.fromUri(Uri.parse(video.uri))
-            setMediaItem(mediaItem)
-            prepare()
-            if (video.playbackPositionMs > 0L) {
-                seekTo(video.playbackPositionMs)
+    // Initialize ExoPlayer with hardware/decoder fallback configuration & Media audio attributes
+    val exoPlayer = remember(video.id, hardwareAcceleration) {
+        val renderersFactory = DefaultRenderersFactory(context).apply {
+            setExtensionRendererMode(
+                if (hardwareAcceleration) {
+                    DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON
+                } else {
+                    DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
+                }
+            )
+            setEnableDecoderFallback(true)
+        }
+        val audioAttributes = AudioAttributes.Builder()
+            .setUsage(C.USAGE_MEDIA)
+            .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+            .build()
+
+        ExoPlayer.Builder(context, renderersFactory)
+            .setAudioAttributes(audioAttributes, true)
+            .build()
+            .apply {
+                val mediaItem = MediaItem.fromUri(Uri.parse(video.uri))
+                setMediaItem(mediaItem)
+                playbackParameters = PlaybackParameters(defaultSpeed)
+                prepare()
+                if (resumePlayback && video.playbackPositionMs > 0L) {
+                    seekTo(video.playbackPositionMs)
+                }
+                playWhenReady = true
             }
-            playWhenReady = true
+    }
+
+    // Pause video cleanly on background stop unless Background Audio or PiP is active
+    val latestVideoBackgroundAudio by rememberUpdatedState(videoBackgroundAudio)
+    val latestIsInPip by rememberUpdatedState(isInPipMode)
+    DisposableEffect(lifecycleOwner, exoPlayer) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP && !latestVideoBackgroundAudio && !latestIsInPip) {
+                exoPlayer.pause()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 
-    // External Subtitle Picker
+    // External Subtitle Picker (.srt / .vtt parsed with real-time sync delay support)
     val subtitlePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
@@ -224,32 +289,23 @@ fun VideoPlayerModal(
                 )
             } catch (_: Exception) {}
 
-            val filename = uri.lastPathSegment ?: "subtitle"
-            externalSubtitleName = filename
-            val mimeType = if (filename.endsWith(".vtt", ignoreCase = true)) {
-                MimeTypes.TEXT_VTT
-            } else {
-                MimeTypes.APPLICATION_SUBRIP
+            val filename = uri.lastPathSegment?.substringAfterLast('/') ?: "subtitle"
+            coroutineScope.launch {
+                val cues = SubtitleParser.loadFromUri(context, uri)
+                if (cues.isNotEmpty()) {
+                    externalSubtitleName = filename
+                    externalSubtitleCues = cues
+                    useExternalSubtitles = true
+                    isSubtitlesDisabled = false
+                    exoPlayer.trackSelectionParameters = exoPlayer.trackSelectionParameters
+                        .buildUpon()
+                        .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+                        .build()
+                    showToast("Loaded $filename (${cues.size} cues)")
+                } else {
+                    showToast("No readable subtitle cues found in $filename")
+                }
             }
-
-            val subtitleConfig = MediaItem.SubtitleConfiguration.Builder(uri)
-                .setMimeType(mimeType)
-                .setLanguage("und")
-                .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
-                .build()
-
-            val curPos = exoPlayer.currentPosition
-            val curPlaying = exoPlayer.playWhenReady
-            val newMediaItem = MediaItem.Builder()
-                .setUri(video.uri)
-                .setSubtitleConfigurations(listOf(subtitleConfig))
-                .build()
-
-            exoPlayer.setMediaItem(newMediaItem)
-            exoPlayer.prepare()
-            exoPlayer.seekTo(curPos)
-            exoPlayer.playWhenReady = curPlaying
-            showToast("External subtitle loaded: $filename")
         }
     }
 
@@ -305,10 +361,8 @@ fun VideoPlayerModal(
         val originalOrientation = activity?.requestedOrientation ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         val originalBrightness = activity?.window?.attributes?.screenBrightness ?: -1.0f
 
-        // Initial default: Landscape
         activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
 
-        // Immersive full-screen: hide system status & navigation bars
         activity?.window?.let { win ->
             val insetsController = WindowCompat.getInsetsController(win, win.decorView)
             insetsController.systemBarsBehavior =
@@ -316,7 +370,6 @@ fun VideoPlayerModal(
             insetsController.hide(WindowInsetsCompat.Type.systemBars())
         }
 
-        // PiP Listener
         val compActivity = activity as? ComponentActivity
         val pipListener = Consumer<PictureInPictureModeChangedInfo> { info ->
             isInPipMode = info.isInPictureInPictureMode
@@ -374,17 +427,26 @@ fun VideoPlayerModal(
         }
     }
 
-    // Progress updates ticker
-    LaunchedEffect(isPlaying, isUserSeeking) {
+    // Progress updates ticker (higher tick frequency when external subtitles are rendered)
+    LaunchedEffect(isPlaying, isUserSeeking, useExternalSubtitles) {
+        val tickInterval = if (useExternalSubtitles) 150L else 500L
+        var saveTick = 0
         while (true) {
             if (isPlaying && !isUserSeeking) {
                 currentPositionMs = exoPlayer.currentPosition
                 if (exoPlayer.duration > 0) {
                     durationMs = exoPlayer.duration
                 }
-                currentOnProgressUpdate(video.id, currentPositionMs, durationMs)
+                if (useExternalSubtitles) {
+                    if (saveTick % 3 == 0) {
+                        currentOnProgressUpdate(video.id, currentPositionMs, durationMs)
+                    }
+                    saveTick++
+                } else {
+                    currentOnProgressUpdate(video.id, currentPositionMs, durationMs)
+                }
             }
-            delay(500L)
+            delay(tickInterval)
         }
     }
 
@@ -442,7 +504,7 @@ fun VideoPlayerModal(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Gesture Overlay Layer (handles Taps, Double Taps, Horizontal Scrub, Vertical Brightness & Volume)
+        // Gesture Overlay Layer
         if (!isInPipMode) {
             VideoGestureOverlay(
                 isScreenLocked = isScreenLocked,
@@ -450,7 +512,7 @@ fun VideoPlayerModal(
                     isControlsVisible = !isControlsVisible
                 },
                 onDoubleTapLeft = {
-                    val target = (exoPlayer.currentPosition - 10000L).coerceAtLeast(0L)
+                    val target = (exoPlayer.currentPosition - seekDeltaMs).coerceAtLeast(0L)
                     exoPlayer.seekTo(target)
                     currentPositionMs = target
                     isDoubleTapRewindVisible = true
@@ -460,7 +522,7 @@ fun VideoPlayerModal(
                     }
                 },
                 onDoubleTapRight = {
-                    val target = (exoPlayer.currentPosition + 10000L).coerceAtMost(durationMs)
+                    val target = (exoPlayer.currentPosition + seekDeltaMs).coerceAtMost(durationMs)
                     exoPlayer.seekTo(target)
                     currentPositionMs = target
                     isDoubleTapForwardVisible = true
@@ -473,44 +535,51 @@ fun VideoPlayerModal(
                     if (isPlaying) exoPlayer.pause() else exoPlayer.play()
                 },
                 onScrubStart = {
-                    scrubStartTimeMs = exoPlayer.currentPosition
-                    scrubTargetTimeMs = scrubStartTimeMs
-                    scrubDeltaMs = 0L
-                    isScrubHUDVisible = true
+                    if (gestureScrubEnabled) {
+                        scrubStartTimeMs = exoPlayer.currentPosition
+                        scrubTargetTimeMs = scrubStartTimeMs
+                        scrubDeltaMs = 0L
+                        isScrubHUDVisible = true
+                    }
                 },
                 onScrubDelta = { deltaX ->
-                    // 1 pixel = ~120ms of scrub
-                    val deltaMs = (deltaX * 120f).toLong()
-                    val newDelta = scrubDeltaMs + deltaMs
-                    val newTarget = (scrubStartTimeMs + newDelta).coerceIn(0L, durationMs)
-                    scrubDeltaMs = newTarget - scrubStartTimeMs
-                    scrubTargetTimeMs = newTarget
+                    if (gestureScrubEnabled) {
+                        val deltaMs = (deltaX * 120f).toLong()
+                        val newDelta = scrubDeltaMs + deltaMs
+                        val newTarget = (scrubStartTimeMs + newDelta).coerceIn(0L, durationMs)
+                        scrubDeltaMs = newTarget - scrubStartTimeMs
+                        scrubTargetTimeMs = newTarget
+                    }
                 },
                 onScrubCommit = {
-                    exoPlayer.seekTo(scrubTargetTimeMs)
-                    currentPositionMs = scrubTargetTimeMs
+                    if (gestureScrubEnabled) {
+                        exoPlayer.seekTo(scrubTargetTimeMs)
+                        currentPositionMs = scrubTargetTimeMs
+                    }
                 },
                 onBrightnessDelta = { delta ->
-                    val newBrightness = (currentBrightness + delta).coerceIn(0.02f, 1.0f)
-                    currentBrightness = newBrightness
-                    activity?.window?.attributes = activity?.window?.attributes?.apply {
-                        screenBrightness = newBrightness
+                    if (gestureBrightnessEnabled) {
+                        val newBrightness = (currentBrightness + delta).coerceIn(0.02f, 1.0f)
+                        currentBrightness = newBrightness
+                        activity?.window?.attributes = activity?.window?.attributes?.apply {
+                            screenBrightness = newBrightness
+                        }
+                        isBrightnessHUDVisible = true
+                        brightnessHideJob?.cancel()
                     }
-                    isBrightnessHUDVisible = true
-                    brightnessHideJob?.cancel()
                 },
                 onVolumeDelta = { delta ->
-                    // delta is -deltaY / height.
-                    // Sensitivity factor 1.25f ensures smooth, continuous MX-Player-like volume control
-                    val newRatio = (currentVolumeRatio + delta * 1.25f).coerceIn(0f, 1f)
-                    currentVolumeRatio = newRatio
-                    val targetVol = (newRatio * safeMaxVolume).roundToInt().coerceIn(0, safeMaxVolume)
-                    if (targetVol != currentVolumeLevel) {
-                        currentVolumeLevel = targetVol
-                        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, targetVol, 0)
+                    if (gestureVolumeEnabled) {
+                        val newRatio = (currentVolumeRatio + delta * 1.25f).coerceIn(0f, 1f)
+                        currentVolumeRatio = newRatio
+                        val targetVol = (newRatio * safeMaxVolume).roundToInt().coerceIn(0, safeMaxVolume)
+                        if (targetVol != currentVolumeLevel) {
+                            currentVolumeLevel = targetVol
+                            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, targetVol, 0)
+                        }
+                        isVolumeHUDVisible = true
+                        volumeHideJob?.cancel()
                     }
-                    isVolumeHUDVisible = true
-                    volumeHideJob?.cancel()
                 },
                 onGestureEnd = {
                     volumeHideJob?.cancel()
@@ -536,6 +605,35 @@ fun VideoPlayerModal(
                     }
                 }
             )
+        }
+
+        // Synchronized External Subtitle Caption Overlay (.srt / .vtt)
+        if (useExternalSubtitles && !isSubtitlesDisabled && externalSubtitleCues.isNotEmpty()) {
+            val activeCue = remember(externalSubtitleCues, currentPositionMs, subtitleDelayMs) {
+                SubtitleParser.findActiveCueText(externalSubtitleCues, currentPositionMs, subtitleDelayMs)
+            }
+            if (!activeCue.isNullOrBlank()) {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = Color.Black.copy(alpha = 0.72f),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(
+                            horizontal = 24.dp,
+                            vertical = if (isControlsVisible && !isScreenLocked && !isInPipMode) 96.dp else 28.dp
+                        )
+                        .testTag("external_subtitle_overlay")
+                ) {
+                    Text(
+                        text = activeCue,
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                    )
+                }
+            }
         }
 
         // Buffering Indicator
@@ -579,6 +677,7 @@ fun VideoPlayerModal(
         DoubleTapFeedback(
             isForward = false,
             isVisible = isDoubleTapRewindVisible,
+            seekSeconds = doubleTapSeekSeconds,
             modifier = Modifier
                 .align(Alignment.CenterStart)
                 .padding(start = 64.dp)
@@ -587,6 +686,7 @@ fun VideoPlayerModal(
         DoubleTapFeedback(
             isForward = true,
             isVisible = isDoubleTapForwardVisible,
+            seekSeconds = doubleTapSeekSeconds,
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .padding(end = 64.dp)
@@ -651,7 +751,6 @@ fun VideoPlayerModal(
                         )
                     )
             ) {
-                // Top App Bar
                 VideoPlayerTopBar(
                     video = video,
                     currentSpeed = currentSpeed,
@@ -704,11 +803,11 @@ fun VideoPlayerModal(
                     modifier = Modifier.align(Alignment.TopCenter)
                 )
 
-                // Center playback controls (Rewind, Play/Pause, Forward)
                 VideoPlayerCenterControls(
                     isPlaying = isPlaying,
+                    seekSeconds = doubleTapSeekSeconds,
                     onRewind10s = {
-                        val target = (exoPlayer.currentPosition - 10000L).coerceAtLeast(0L)
+                        val target = (exoPlayer.currentPosition - seekDeltaMs).coerceAtLeast(0L)
                         exoPlayer.seekTo(target)
                         currentPositionMs = target
                     },
@@ -720,14 +819,13 @@ fun VideoPlayerModal(
                         }
                     },
                     onForward10s = {
-                        val target = (exoPlayer.currentPosition + 10000L).coerceAtMost(durationMs)
+                        val target = (exoPlayer.currentPosition + seekDeltaMs).coerceAtMost(durationMs)
                         exoPlayer.seekTo(target)
                         currentPositionMs = target
                     },
                     modifier = Modifier.align(Alignment.Center)
                 )
 
-                // Bottom Scrubber Bar
                 VideoPlayerBottomBar(
                     currentPositionMs = currentPositionMs,
                     durationMs = durationMs,
@@ -820,6 +918,7 @@ fun VideoPlayerModal(
                 },
                 onSelectInternalTrack = { groupIndex, trackIndex ->
                     isSubtitlesDisabled = false
+                    useExternalSubtitles = false
                     val tracks = exoPlayer.currentTracks
                     if (groupIndex in 0 until tracks.groups.size) {
                         val group = tracks.groups[groupIndex]
@@ -834,6 +933,7 @@ fun VideoPlayerModal(
                 },
                 onDisableSubtitles = {
                     isSubtitlesDisabled = true
+                    useExternalSubtitles = false
                     exoPlayer.trackSelectionParameters = exoPlayer.trackSelectionParameters
                         .buildUpon()
                         .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)

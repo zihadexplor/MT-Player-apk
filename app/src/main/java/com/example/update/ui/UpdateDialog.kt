@@ -75,21 +75,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.example.ui.theme.DarkBackground
-import com.example.ui.theme.DarkOutline
-import com.example.ui.theme.DarkSurface
-import com.example.ui.theme.DarkSurfaceContainerHigh
-import com.example.ui.theme.DarkSurfaceVariant
-import com.example.ui.theme.SpotifyGreen
-import com.example.ui.theme.SpotifyGreenBright
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TextTertiary
 import com.example.update.ReleaseInfo
 import com.example.update.UpdateSource
 import com.example.update.UpdateState
-
-private val ErrorRed = Color(0xFFFF6B6B)
 
 /**
  * The update popup. Renders one of: available → downloading → ready → installing, or failed.
@@ -157,8 +145,8 @@ internal fun UpdateDialogCard(
             .fillMaxWidth()
             .testTag("update_dialog"),
         shape = RoundedCornerShape(28.dp),
-        color = DarkSurface,
-        border = BorderStroke(0.5.dp, DarkOutline),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant),
         shadowElevation = 12.dp,
     ) {
         AnimatedContent(
@@ -195,7 +183,7 @@ private fun AvailableContent(
         Column(Modifier.padding(horizontal = 22.dp)) {
             MetaRow(release)
             Spacer(Modifier.height(16.dp))
-            Text("What's new", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TextPrimary)
+            Text("What's new", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
             Spacer(Modifier.height(8.dp))
             ReleaseNotes(release.notes, Modifier.heightIn(max = 260.dp))
             Spacer(Modifier.height(20.dp))
@@ -203,13 +191,13 @@ private fun AvailableContent(
                 OutlinedButton(
                     onClick = onRemindLater,
                     modifier = Modifier.weight(1f).height(48.dp).testTag("update_remind_later"),
-                    border = BorderStroke(1.dp, DarkOutline),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
                 ) { Text("Remind me later", maxLines = 1) }
                 Button(
                     onClick = onDownload,
                     modifier = Modifier.weight(1f).height(48.dp).testTag("update_download"),
-                    colors = ButtonDefaults.buttonColors(containerColor = SpotifyGreen, contentColor = Color.Black),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
                 ) {
                     Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
@@ -233,7 +221,7 @@ private fun DownloadingContent(
     ) {
         Text(
             "Downloading v${s.release.versionName}",
-            style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = TextPrimary,
+            style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface,
         )
         Spacer(Modifier.height(22.dp))
         DownloadRing(progress = s.progress, indeterminate = s.queued && s.downloadedBytes == 0L)
@@ -241,30 +229,30 @@ private fun DownloadingContent(
         Text(
             text = if (s.queued && s.downloadedBytes == 0L) "Starting download…"
             else "${formatBytes(s.downloadedBytes)} of ${formatBytes(s.totalBytes)}",
-            style = MaterialTheme.typography.bodyLarge, color = TextPrimary,
+            style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface,
         )
         Spacer(Modifier.height(4.dp))
         Text(
             text = if (s.bytesPerSecond > 0) "${formatBytes(s.bytesPerSecond)}/s · ${eta(s)}" else "Connecting to GitHub…",
-            style = MaterialTheme.typography.bodySmall, color = TextSecondary,
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(24.dp))
         Button(
             onClick = onBackground,
             modifier = Modifier.fillMaxWidth().height(48.dp).testTag("update_background"),
-            colors = ButtonDefaults.buttonColors(containerColor = SpotifyGreen, contentColor = Color.Black),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
         ) { Text("Download in background", fontWeight = FontWeight.Bold, maxLines = 1) }
         Spacer(Modifier.height(8.dp))
         OutlinedButton(
             onClick = onCancel,
             modifier = Modifier.fillMaxWidth().height(48.dp).testTag("update_cancel"),
-            border = BorderStroke(1.dp, ErrorRed.copy(alpha = 0.6f)),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = ErrorRed),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.6f)),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
         ) { Text("Cancel download", maxLines = 1) }
         Spacer(Modifier.height(10.dp))
         Text(
             "You'll get a notification when it's ready to install.",
-            style = MaterialTheme.typography.bodySmall, color = TextTertiary, textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline, textAlign = TextAlign.Center,
         )
     }
 }
@@ -285,25 +273,25 @@ private fun ReadyContent(
     ) {
         Box(
             Modifier.size(84.dp).scale(pop).clip(CircleShape)
-                .background(Brush.radialGradient(listOf(SpotifyGreen.copy(alpha = 0.35f), Color.Transparent))),
+                .background(Brush.radialGradient(listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.35f), Color.Transparent))),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = SpotifyGreenBright, modifier = Modifier.size(56.dp))
+            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(56.dp))
         }
         Spacer(Modifier.height(14.dp))
-        Text("Ready to install", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = TextPrimary)
+        Text("Ready to install", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
         Spacer(Modifier.height(6.dp))
         Text(
             "MT Player v${release.versionName} has been downloaded and verified.",
-            style = MaterialTheme.typography.bodyMedium, color = TextSecondary, textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center,
         )
         if (needsPermission) {
             Spacer(Modifier.height(14.dp))
-            Surface(shape = RoundedCornerShape(14.dp), color = DarkSurfaceContainerHigh) {
+            Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh) {
                 Text(
                     "Android will ask you to allow MT Player to install updates. This is needed only once.",
                     modifier = Modifier.padding(12.dp),
-                    style = MaterialTheme.typography.bodySmall, color = TextSecondary,
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
@@ -312,13 +300,13 @@ private fun ReadyContent(
             OutlinedButton(
                 onClick = onLater,
                 modifier = Modifier.weight(1f).height(48.dp),
-                border = BorderStroke(1.dp, DarkOutline),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
             ) { Text("Later") }
             Button(
                 onClick = onInstall,
                 modifier = Modifier.weight(1.4f).height(48.dp).testTag("update_install"),
-                colors = ButtonDefaults.buttonColors(containerColor = SpotifyGreen, contentColor = Color.Black),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
             ) { Text(if (needsPermission) "Allow & install" else "Install now", fontWeight = FontWeight.Bold) }
         }
     }
@@ -332,9 +320,9 @@ private fun InstallingContent(release: ReleaseInfo) {
     ) {
         DownloadRing(progress = 1f, indeterminate = true, size = 96)
         Spacer(Modifier.height(18.dp))
-        Text("Installing v${release.versionName}…", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+        Text("Installing v${release.versionName}…", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
         Spacer(Modifier.height(4.dp))
-        Text("Confirm in the system dialog if asked.", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+        Text("Confirm in the system dialog if asked.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -344,24 +332,24 @@ private fun FailedContent(s: UpdateState.Failed, onRetry: () -> Unit, onClose: (
         Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 26.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Icon(Icons.Default.ErrorOutline, contentDescription = null, tint = ErrorRed, modifier = Modifier.size(56.dp))
+        Icon(Icons.Default.ErrorOutline, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(56.dp))
         Spacer(Modifier.height(12.dp))
-        Text("Update problem", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = TextPrimary)
+        Text("Update problem", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
         Spacer(Modifier.height(6.dp))
-        Text(s.message, style = MaterialTheme.typography.bodyMedium, color = TextSecondary, textAlign = TextAlign.Center)
+        Text(s.message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
         Spacer(Modifier.height(22.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             OutlinedButton(
                 onClick = onClose,
                 modifier = Modifier.weight(1f).height(48.dp),
-                border = BorderStroke(1.dp, DarkOutline),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
             ) { Text("Close") }
             if (s.release != null) {
                 Button(
                     onClick = onRetry,
                     modifier = Modifier.weight(1f).height(48.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = SpotifyGreen, contentColor = Color.Black),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
                 ) { Text("Retry", fontWeight = FontWeight.Bold) }
             }
         }
@@ -378,9 +366,10 @@ private fun Header(icon: ImageVector, title: String, pulse: Boolean, extra: @Com
         animationSpec = infiniteRepeatable(tween(1400, easing = FastOutSlowInEasing), RepeatMode.Restart),
         label = "ring",
     )
+    val cs = MaterialTheme.colorScheme
     Box(
         Modifier.fillMaxWidth()
-            .background(Brush.verticalGradient(listOf(SpotifyGreen.copy(alpha = 0.28f), DarkSurface)))
+            .background(Brush.verticalGradient(listOf(cs.primary.copy(alpha = 0.24f), cs.surface)))
             .padding(top = 28.dp, bottom = 18.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -389,17 +378,17 @@ private fun Header(icon: ImageVector, title: String, pulse: Boolean, extra: @Com
                 if (pulse) {
                     Box(
                         Modifier.size(64.dp).scale(ring).clip(CircleShape)
-                            .border(2.dp, SpotifyGreen.copy(alpha = (1.25f - ring).coerceIn(0f, 0.6f)), CircleShape),
+                            .border(2.dp, cs.primary.copy(alpha = (1.25f - ring).coerceIn(0f, 0.6f)), CircleShape),
                     )
                 }
                 Box(
                     Modifier.size(64.dp).clip(CircleShape)
-                        .background(Brush.linearGradient(listOf(SpotifyGreenBright, SpotifyGreen))),
+                        .background(Brush.linearGradient(listOf(cs.primary, cs.secondary))),
                     contentAlignment = Alignment.Center,
-                ) { Icon(icon, contentDescription = null, tint = Color.Black, modifier = Modifier.size(32.dp)) }
+                ) { Icon(icon, contentDescription = null, tint = cs.onPrimary, modifier = Modifier.size(32.dp)) }
             }
             Spacer(Modifier.height(12.dp))
-            Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = TextPrimary)
+            Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = cs.onSurface)
             Spacer(Modifier.height(8.dp))
             extra()
         }
@@ -408,11 +397,12 @@ private fun Header(icon: ImageVector, title: String, pulse: Boolean, extra: @Com
 
 @Composable
 private fun VersionChip(from: String, to: String) {
-    Surface(shape = RoundedCornerShape(50), color = DarkBackground.copy(alpha = 0.6f), border = BorderStroke(0.5.dp, DarkOutline)) {
+    val cs = MaterialTheme.colorScheme
+    Surface(shape = RoundedCornerShape(50), color = cs.surfaceContainerHigh, border = BorderStroke(0.5.dp, cs.outlineVariant)) {
         Row(Modifier.padding(horizontal = 14.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("v$from", style = MaterialTheme.typography.labelLarge, color = TextSecondary)
-            Text("  →  ", style = MaterialTheme.typography.labelLarge, color = TextTertiary)
-            Text("v$to", style = MaterialTheme.typography.labelLarge, color = SpotifyGreenBright, fontWeight = FontWeight.Bold)
+            Text("v$from", style = MaterialTheme.typography.labelLarge, color = cs.onSurfaceVariant)
+            Text("  →  ", style = MaterialTheme.typography.labelLarge, color = cs.outline)
+            Text("v$to", style = MaterialTheme.typography.labelLarge, color = cs.primary, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -434,45 +424,46 @@ private fun MetaRow(release: ReleaseInfo) {
 @Composable
 private fun MetaItem(icon: ImageVector, text: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, contentDescription = null, tint = TextTertiary, modifier = Modifier.size(14.dp))
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(14.dp))
         Spacer(Modifier.width(4.dp))
-        Text(text, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+        Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
 @Composable
 private fun Dot() {
-    Text("  •  ", style = MaterialTheme.typography.bodySmall, color = TextTertiary)
+    Text("  •  ", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
 }
 
 /** Renders the GitHub release body (lightweight Markdown: headings and bullet lists). */
 @Composable
 fun ReleaseNotes(markdown: String, modifier: Modifier = Modifier) {
     val lines = remember(markdown) { parseNotes(markdown) }
+    val cs = MaterialTheme.colorScheme
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = DarkSurfaceContainerHigh,
-        border = BorderStroke(0.5.dp, DarkOutline),
+        color = cs.surfaceContainerHigh,
+        border = BorderStroke(0.5.dp, cs.outlineVariant),
     ) {
         Column(Modifier.verticalScroll(rememberScrollState()).padding(14.dp)) {
             if (lines.isEmpty()) {
-                Text("Bug fixes and improvements.", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                Text("Bug fixes and improvements.", style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant)
             }
             lines.forEachIndexed { i, line ->
                 when (line) {
                     is NoteLine.Heading -> {
                         if (i > 0) Spacer(Modifier.height(10.dp))
-                        Text(line.text, style = MaterialTheme.typography.labelLarge, color = SpotifyGreen, fontWeight = FontWeight.Bold)
+                        Text(line.text, style = MaterialTheme.typography.labelLarge, color = cs.primary, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(6.dp))
                     }
                     is NoteLine.Bullet -> Row(Modifier.padding(vertical = 3.dp)) {
-                        Box(Modifier.padding(top = 7.dp).size(5.dp).clip(CircleShape).background(SpotifyGreen))
+                        Box(Modifier.padding(top = 7.dp).size(5.dp).clip(CircleShape).background(cs.primary))
                         Spacer(Modifier.width(10.dp))
-                        Text(line.text, style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
+                        Text(line.text, style = MaterialTheme.typography.bodyMedium, color = cs.onSurface)
                     }
                     is NoteLine.Paragraph -> Text(
-                        line.text, style = MaterialTheme.typography.bodyMedium, color = TextSecondary,
+                        line.text, style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant,
                         modifier = Modifier.padding(vertical = 3.dp),
                     )
                 }
@@ -491,6 +482,10 @@ private fun DownloadRing(progress: Float, indeterminate: Boolean, size: Int = 14
     val glow by transition.animateFloat(
         0.35f, 0.8f, infiniteRepeatable(tween(900), RepeatMode.Reverse), label = "glow",
     )
+    val cs = MaterialTheme.colorScheme
+    val primaryColor = cs.primary
+    val secondaryColor = cs.secondary
+    val trackColor = cs.surfaceVariant
     Box(Modifier.size(size.dp), contentAlignment = Alignment.Center) {
         Canvas(Modifier.size(size.dp)) {
             val stroke = this.size.minDimension * 0.075f
@@ -499,12 +494,12 @@ private fun DownloadRing(progress: Float, indeterminate: Boolean, size: Int = 14
             val topLeft = Offset(inset, inset)
             // halo
             drawCircle(
-                brush = Brush.radialGradient(listOf(SpotifyGreen.copy(alpha = glow * 0.25f), Color.Transparent)),
+                brush = Brush.radialGradient(listOf(primaryColor.copy(alpha = glow * 0.25f), Color.Transparent)),
                 radius = this.size.minDimension / 2,
             )
             // track
-            drawArc(DarkSurfaceVariant, 0f, 360f, false, topLeft, arcSize, style = Stroke(stroke))
-            val sweepBrush = Brush.sweepGradient(listOf(SpotifyGreen, SpotifyGreenBright, SpotifyGreen))
+            drawArc(trackColor, 0f, 360f, false, topLeft, arcSize, style = Stroke(stroke))
+            val sweepBrush = Brush.sweepGradient(listOf(primaryColor, secondaryColor, primaryColor))
             if (indeterminate) {
                 rotate(spin) {
                     drawArc(sweepBrush, 0f, 90f, false, topLeft, arcSize, style = Stroke(stroke, cap = StrokeCap.Round))
@@ -527,13 +522,13 @@ private fun DownloadRing(progress: Float, indeterminate: Boolean, size: Int = 14
         if (!indeterminate || size >= 140) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 if (indeterminate) {
-                    Icon(Icons.Default.CloudDownload, contentDescription = null, tint = SpotifyGreen, modifier = Modifier.size(34.dp))
+                    Icon(Icons.Default.CloudDownload, contentDescription = null, tint = cs.primary, modifier = Modifier.size(34.dp))
                 } else {
                     Text(
                         "${(animated * 100).toInt()}%",
-                        fontSize = (size / 4.6f).sp, fontWeight = FontWeight.Black, color = TextPrimary,
+                        fontSize = (size / 4.6f).sp, fontWeight = FontWeight.Black, color = cs.onSurface,
                     )
-                    Text("downloaded", style = MaterialTheme.typography.labelMedium, color = TextTertiary)
+                    Text("downloaded", style = MaterialTheme.typography.labelMedium, color = cs.outline)
                 }
             }
         }

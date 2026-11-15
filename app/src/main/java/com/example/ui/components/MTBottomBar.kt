@@ -34,12 +34,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.navigation.BottomNavItem
 import com.example.ui.navigation.bottomNavItems
-import com.example.ui.theme.DarkOutlineVariant
-import com.example.ui.theme.DarkSurface
-import com.example.ui.theme.SpotifyGreen
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TextTertiary
 
 @Composable
 fun MTBottomBar(

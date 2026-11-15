@@ -54,7 +54,6 @@ import com.example.ui.screens.settings.SettingsScreen
 import com.example.ui.screens.splash.SplashScreen
 import com.example.ui.screens.video.VideoPlayerModal
 import com.example.ui.screens.video.VideoScreen
-import com.example.ui.theme.DarkBackground
 import com.example.ui.viewmodel.MainViewModel
 import com.example.update.ui.UpdateHost
 
@@ -78,10 +77,16 @@ fun MTPlayerApp(
     val rawTracks by viewModel.rawAudioTracks.collectAsStateWithLifecycle()
     val albums by viewModel.filteredAlbums.collectAsStateWithLifecycle()
     val artists by viewModel.filteredArtists.collectAsStateWithLifecycle()
+    val genres by viewModel.filteredGenres.collectAsStateWithLifecycle()
     val folders by viewModel.filteredFolders.collectAsStateWithLifecycle()
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     val recentlyPlayed by viewModel.recentlyPlayedTracks.collectAsStateWithLifecycle()
     val mostPlayed by viewModel.mostPlayedTracks.collectAsStateWithLifecycle()
+
+    val currentLyrics by viewModel.currentLyrics.collectAsStateWithLifecycle()
+    val dynamicArtworkSeedColor by viewModel.dynamicArtworkSeedColor.collectAsStateWithLifecycle()
+    val sleepTimerRemainingSeconds by viewModel.sleepTimerRemainingSeconds.collectAsStateWithLifecycle()
+    val playerSettings by viewModel.playerSettings.collectAsStateWithLifecycle()
 
     val filteredVideos by viewModel.filteredVideoItems.collectAsStateWithLifecycle()
     val videoFolders by viewModel.videoFolders.collectAsStateWithLifecycle()
@@ -269,6 +274,7 @@ fun MTPlayerApp(
                             tracks = filteredTracks,
                             albums = albums,
                             artists = artists,
+                            genres = genres,
                             folders = folders,
                             stats = stats,
                             currentPlayingTrack = playbackState.currentTrack,
@@ -352,6 +358,11 @@ fun MTPlayerApp(
                             },
                             onToggleFavorite = viewModel::onToggleFavorite,
                             onNavigateToMusic = {
+                                viewModel.onMusicTabChange(0)
+                                navController.navigate(Screen.Music.route)
+                            },
+                            onNavigateToFavorites = {
+                                viewModel.onMusicTabChange(5)
                                 navController.navigate(Screen.Music.route)
                             },
                             onNavigateToSettings = {
@@ -416,7 +427,13 @@ fun MTPlayerApp(
                 onOpenEqualizer = {
                     viewModel.closeNowPlaying()
                     navController.navigate(Screen.Equalizer.route)
-                }
+                },
+                lyrics = currentLyrics,
+                sleepTimerRemainingSeconds = sleepTimerRemainingSeconds,
+                dynamicArtworkSeedColor = if (playerSettings.dynamicArtworkColor) dynamicArtworkSeedColor else null,
+                onReorderQueue = viewModel::reorderQueue,
+                onRemoveQueueItem = viewModel::removeFromQueue,
+                onClearQueue = viewModel::clearQueue
             )
         }
 
@@ -483,7 +500,15 @@ fun MTPlayerApp(
             VideoPlayerModal(
                 video = video,
                 onClose = viewModel::closeVideoPlayer,
-                onProgressUpdate = viewModel::updateVideoPlaybackProgress
+                onProgressUpdate = viewModel::updateVideoPlaybackProgress,
+                defaultSpeed = playerSettings.defaultVideoSpeed,
+                resumePlayback = playerSettings.resumeVideo,
+                doubleTapSeekSeconds = playerSettings.doubleTapSeekSeconds,
+                gestureBrightnessEnabled = playerSettings.gestureBrightness,
+                gestureVolumeEnabled = playerSettings.gestureVolume,
+                gestureScrubEnabled = playerSettings.gestureScrub,
+                hardwareAcceleration = playerSettings.hardwareAcceleration,
+                videoBackgroundAudio = playerSettings.videoBackgroundAudio
             )
         }
 

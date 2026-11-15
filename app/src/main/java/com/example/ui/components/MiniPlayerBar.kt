@@ -41,14 +41,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
-import com.example.data.model.AudioTrack
+import coil.compose.SubcomposeAsyncImage
 import com.example.data.model.PlaybackState
-import com.example.ui.theme.DarkOutline
-import com.example.ui.theme.DarkSurfaceContainerHigh
-import com.example.ui.theme.SpotifyGreen
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
+import com.example.ui.image.AudioArtThumb
 
 @Composable
 fun MiniPlayerBar(
@@ -100,29 +95,40 @@ fun MiniPlayerBar(
                             .padding(horizontal = 12.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Album art thumbnail with Coil AsyncImage or Fallback
+                        // Album art thumbnail with Scoped Storage AudioArtThumb & fallback
                         Box(
                             modifier = Modifier
                                 .size(44.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)),
                             contentAlignment = Alignment.Center
                         ) {
-                            if (!track.albumArtUri.isNullOrBlank()) {
-                                AsyncImage(
-                                    model = track.albumArtUri,
-                                    contentDescription = track.album,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.size(44.dp)
-                                )
-                            } else {
-                                Icon(
-                                    imageVector = Icons.Default.MusicNote,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
+                            SubcomposeAsyncImage(
+                                model = AudioArtThumb(track.uri, track.albumArtUri),
+                                contentDescription = track.album,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.size(44.dp),
+                                error = {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Default.MusicNote,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                    }
+                                },
+                                loading = {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Default.MusicNote,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            )
                         }
 
                         Spacer(modifier = Modifier.width(10.dp))

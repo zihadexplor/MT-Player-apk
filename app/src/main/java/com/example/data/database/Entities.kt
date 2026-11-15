@@ -172,11 +172,11 @@ data class ThemePreferenceEntity(
     @PrimaryKey
     val id: Int = 1,
     @ColumnInfo(name = "theme_mode")
-    val themeMode: String = "DARK", // DARK, LIGHT, SYSTEM
+    val themeMode: String = "DARK", // DARK, AMOLED, LIGHT, SYSTEM
     @ColumnInfo(name = "accent_color_hex")
-    val accentColorHex: String = "#1DB954",
+    val accentColorHex: String = "#E8799B",
     @ColumnInfo(name = "pure_black_amoled")
-    val pureBlackAmoled: Boolean = true
+    val pureBlackAmoled: Boolean = false
 )
 
 /**
@@ -209,4 +209,41 @@ data class SleepTimerPreferenceEntity(
     val finishLastSong: Boolean = false,
     @ColumnInfo(name = "fade_out_enabled")
     val fadeOutEnabled: Boolean = true
+)
+
+/**
+ * 13. Persisted Player & Personalization Settings
+ */
+@Entity(tableName = "player_settings")
+data class PlayerSettingsEntity(
+    @PrimaryKey
+    val id: Int = 1,
+    @ColumnInfo(name = "gapless_playback")
+    val gaplessPlayback: Boolean = true,
+    @ColumnInfo(name = "auto_pause_on_headset")
+    val autoPauseOnHeadset: Boolean = true,
+    @ColumnInfo(name = "crossfade_seconds")
+    val crossfadeSeconds: Int = 0,
+    @ColumnInfo(name = "hardware_acceleration")
+    val hardwareAcceleration: Boolean = true,
+    @ColumnInfo(name = "resume_video")
+    val resumeVideo: Boolean = true,
+    @ColumnInfo(name = "default_video_speed")
+    val defaultVideoSpeed: Float = 1.0f,
+    @ColumnInfo(name = "double_tap_seek_seconds")
+    val doubleTapSeekSeconds: Int = 10,
+    @ColumnInfo(name = "gesture_brightness")
+    val gestureBrightness: Boolean = true,
+    @ColumnInfo(name = "gesture_volume")
+    val gestureVolume: Boolean = true,
+    @ColumnInfo(name = "gesture_scrub")
+    val gestureScrub: Boolean = true,
+    @ColumnInfo(name = "min_audio_duration_seconds")
+    val minAudioDurationSeconds: Int = 30,
+    @ColumnInfo(name = "auto_scan_on_launch")
+    val autoScanOnLaunch: Boolean = true,
+    @ColumnInfo(name = "dynamic_artwork_color")
+    val dynamicArtworkColor: Boolean = true,
+    @ColumnInfo(name = "video_background_audio")
+    val videoBackgroundAudio: Boolean = false
 )

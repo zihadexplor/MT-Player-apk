@@ -77,22 +77,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import com.example.data.model.AudioTrack
 import com.example.data.model.Playlist
 import com.example.data.model.StorageStats
 import com.example.data.model.VideoFolder
 import com.example.data.model.VideoItem
-import com.example.ui.theme.DarkOutline
-import com.example.ui.theme.DarkOutlineVariant
-import com.example.ui.theme.DarkSurface
-import com.example.ui.theme.DarkSurfaceContainer
-import com.example.ui.theme.DarkSurfaceContainerHigh
-import com.example.ui.theme.DarkSurfaceVariant
-import com.example.ui.theme.SpotifyGreen
-import com.example.ui.theme.SpotifyGreenBright
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TextTertiary
+import com.example.ui.image.AudioArtThumb
+import com.example.ui.theme.MonoFontFamily
 import java.util.Locale
 
 fun formatDuration(ms: Long): String {
@@ -254,7 +246,7 @@ fun StatPill(
                 Text(
                     text = label,
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextTertiary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 10.sp
                 )
             }
@@ -318,28 +310,39 @@ fun TrackItemRow(
         Box(
             modifier = Modifier
                 .size(46.dp)
-                .clip(RoundedCornerShape(8.dp))
+                .clip(RoundedCornerShape(10.dp))
                 .background(
                     if (isSelected) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.surfaceContainerHigh
                 ),
             contentAlignment = Alignment.Center
         ) {
-            if (!track.albumArtUri.isNullOrBlank()) {
-                AsyncImage(
-                    model = track.albumArtUri,
-                    contentDescription = track.album,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                Icon(
-                    imageVector = if (isSelected) Icons.Default.PlayArrow else Icons.Default.MusicNote,
-                    contentDescription = null,
-                    tint = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
+            SubcomposeAsyncImage(
+                model = AudioArtThumb(track.uri, track.albumArtUri),
+                contentDescription = track.album,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+                error = {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = if (isSelected) Icons.Default.PlayArrow else Icons.Default.MusicNote,
+                            contentDescription = null,
+                            tint = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                },
+                loading = {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.MusicNote,
+                            contentDescription = null,
+                            tint = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            )
         }
 
         Spacer(modifier = Modifier.width(10.dp))
@@ -370,8 +373,8 @@ fun TrackItemRow(
         // Duration
         Text(
             text = formatDuration(track.durationMs),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.outline
+            style = MaterialTheme.typography.bodySmall.copy(fontFamily = MonoFontFamily),
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         // Favorite icon
@@ -386,7 +389,7 @@ fun TrackItemRow(
                 Icon(
                     imageVector = if (track.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                     contentDescription = if (track.isFavorite) "Unfavorite" else "Favorite",
-                    tint = if (track.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                    tint = if (track.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(19.dp)
                 )
             }
@@ -403,7 +406,7 @@ fun TrackItemRow(
                     Icon(
                         imageVector = Icons.Default.MoreVert,
                         contentDescription = "Song options",
-                        tint = TextTertiary,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(19.dp)
                     )
                 }
@@ -506,8 +509,8 @@ fun VideoGridCard(
                 ) {
                     Text(
                         text = formatDuration(video.durationMs),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextPrimary,
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = MonoFontFamily),
+                        color = Color.White,
                         fontSize = 11.sp,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                     )
@@ -540,7 +543,7 @@ fun VideoGridCard(
                     Text(
                         text = video.title,
                         style = MaterialTheme.typography.titleSmall,
-                        color = TextPrimary,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
@@ -556,7 +559,7 @@ fun VideoGridCard(
                         Icon(
                             imageVector = Icons.Default.MoreVert,
                             contentDescription = "Video options",
-                            tint = TextSecondary,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -571,7 +574,7 @@ fun VideoGridCard(
                     Text(
                         text = video.folderName,
                         style = MaterialTheme.typography.bodySmall,
-                        color = TextTertiary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 11.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -581,7 +584,7 @@ fun VideoGridCard(
                     Text(
                         text = formatFileSize(video.sizeBytes),
                         style = MaterialTheme.typography.bodySmall,
-                        color = TextTertiary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 11.sp
                     )
                 }
@@ -592,7 +595,7 @@ fun VideoGridCard(
                     Text(
                         text = "Resume at ${formatDuration(video.playbackPositionMs)} ($pct%)",
                         style = MaterialTheme.typography.labelSmall,
-                        color = SpotifyGreen,
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -669,8 +672,8 @@ fun VideoRowCard(
                 ) {
                     Text(
                         text = formatDuration(video.durationMs),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextPrimary,
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = MonoFontFamily),
+                        color = Color.White,
                         fontSize = 9.sp,
                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
                     )
@@ -700,7 +703,7 @@ fun VideoRowCard(
                 Text(
                     text = video.title,
                     style = MaterialTheme.typography.titleSmall,
-                    color = TextPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -708,7 +711,7 @@ fun VideoRowCard(
                 Text(
                     text = "${video.folderName} • ${formatFileSize(video.sizeBytes)}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextTertiary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 11.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -752,7 +755,7 @@ fun VideoRowCard(
                 Icon(
                     imageVector = Icons.Default.MoreVert,
                     contentDescription = "Options",
-                    tint = TextSecondary,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -916,7 +919,7 @@ fun VideoFolderCard(
                 Text(
                     text = folder.name,
                     style = MaterialTheme.typography.titleMedium,
-                    color = TextPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -925,14 +928,14 @@ fun VideoFolderCard(
                 Text(
                     text = "${folder.videoCount} videos • ${formatFileSize(folder.totalSizeBytes)}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 11.sp
                 )
                 if (folder.path.isNotBlank() && folder.path != folder.name) {
                     Text(
                         text = folder.path,
                         style = MaterialTheme.typography.bodySmall,
-                        color = TextTertiary,
+                        color = MaterialTheme.colorScheme.outline,
                         fontSize = 10.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -949,7 +952,7 @@ fun VideoFolderCard(
                 Icon(
                     imageVector = Icons.Default.VisibilityOff,
                     contentDescription = "Hide folder",
-                    tint = TextTertiary,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -971,7 +974,7 @@ fun VideoDetailsDialog(
             Text(
                 text = "Video Details",
                 style = MaterialTheme.typography.titleLarge,
-                color = TextPrimary,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Bold
             )
         },
@@ -1006,19 +1009,20 @@ fun VideoDetailsDialog(
                     onDismiss()
                     onPlay()
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = SpotifyGreen),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ),
                 modifier = Modifier.testTag("dialog_play_video_btn")
             ) {
                 Icon(
                     imageVector = Icons.Default.PlayArrow,
                     contentDescription = null,
-                    tint = Color.Black,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = if (video.playbackPositionMs > 0) "Resume" else "Play",
-                    color = Color.Black,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -1034,7 +1038,7 @@ fun VideoDetailsDialog(
                 ) {
                     Text(
                         text = if (video.isFavorite) "Unfavorite" else "Favorite",
-                        color = SpotifyGreen
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
                 TextButton(
@@ -1044,7 +1048,7 @@ fun VideoDetailsDialog(
                     },
                     modifier = Modifier.testTag("dialog_hide_folder_btn")
                 ) {
-                    Text("Hide Folder", color = TextSecondary)
+                    Text("Hide Folder", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         },
@@ -1067,7 +1071,7 @@ fun ManageHiddenFoldersDialog(
             Text(
                 text = "Hidden Video Folders",
                 style = MaterialTheme.typography.titleLarge,
-                color = TextPrimary,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Bold
             )
         },
@@ -1081,13 +1085,13 @@ fun ManageHiddenFoldersDialog(
                     Text(
                         text = "No folders are currently hidden. You can hide unwanted video folders from their 3-dot options menu.",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else {
                     Text(
                         text = "Videos in these folders are hidden from your library and searches:",
                         style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(10.dp))
                     LazyColumn(
@@ -1190,13 +1194,13 @@ fun EmptyMediaView(
             modifier = Modifier
                 .size(72.dp)
                 .clip(CircleShape)
-                .background(DarkSurfaceVariant),
+                .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.Default.MusicNote,
                 contentDescription = null,
-                tint = SpotifyGreen,
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(36.dp)
             )
         }
@@ -1206,7 +1210,7 @@ fun EmptyMediaView(
         Text(
             text = title,
             style = MaterialTheme.typography.titleMedium,
-            color = TextPrimary,
+            color = MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.Bold
         )
 
@@ -1215,7 +1219,7 @@ fun EmptyMediaView(
         Text(
             text = subtitle,
             style = MaterialTheme.typography.bodySmall,
-            color = TextSecondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             lineHeight = 18.sp
         )
 
@@ -1224,19 +1228,20 @@ fun EmptyMediaView(
         Button(
             onClick = onButtonClick,
             shape = RoundedCornerShape(24.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = SpotifyGreen),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ),
             modifier = Modifier.testTag("empty_state_action_button")
         ) {
             Icon(
                 imageVector = Icons.Default.Refresh,
                 contentDescription = null,
-                tint = Color.Black,
                 modifier = Modifier.size(18.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = buttonText,
-                color = Color.Black,
                 fontWeight = FontWeight.Bold
             )
         }
@@ -1338,25 +1343,26 @@ fun SongActionBottomSheet(
                 Box(
                     modifier = Modifier
                         .size(52.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (!track.albumArtUri.isNullOrBlank()) {
-                        AsyncImage(
-                            model = track.albumArtUri,
-                            contentDescription = track.album,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.MusicNote,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
+                    SubcomposeAsyncImage(
+                        model = AudioArtThumb(track.uri, track.albumArtUri),
+                        contentDescription = track.album,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                        error = {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.MusicNote,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+                        }
+                    )
                 }
 
                 Spacer(modifier = Modifier.width(14.dp))
@@ -1366,14 +1372,14 @@ fun SongActionBottomSheet(
                         text = track.title,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
                         text = "${track.artist} • ${track.album}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -1445,7 +1451,7 @@ fun SheetActionRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     onClick: () -> Unit,
     testTag: String,
-    iconTint: Color = TextPrimary
+    iconTint: Color = MaterialTheme.colorScheme.onSurface
 ) {
     Row(
         modifier = Modifier
@@ -1466,7 +1472,7 @@ fun SheetActionRow(
         Text(
             text = title,
             style = MaterialTheme.typography.bodyLarge,
-            color = TextPrimary
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -1488,7 +1494,7 @@ fun AddToPlaylistDialog(
                 text = if (isCreatingNew) "Create New Playlist" else "Add to Playlist",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary
+                color = MaterialTheme.colorScheme.onSurface
             )
         },
         text = {
@@ -1497,14 +1503,14 @@ fun AddToPlaylistDialog(
                     Text(
                         text = "Enter a name for your new playlist:",
                         style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(10.dp))
                     OutlinedTextField(
                         value = newPlaylistName,
                         onValueChange = { newPlaylistName = it },
                         singleLine = true,
-                        placeholder = { Text("e.g. Road Trip", color = TextTertiary) },
+                        placeholder = { Text("e.g. Road Trip", color = MaterialTheme.colorScheme.outline) },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
@@ -1626,7 +1632,7 @@ fun SongDetailsDialog(
                 text = "Song Information",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary
+                color = MaterialTheme.colorScheme.onSurface
             )
         },
         text = {

@@ -75,10 +75,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.BuildConfig
+import com.example.ui.image.ContrastUtils
 import com.example.ui.theme.AccentColors
-import com.example.ui.theme.parseAccentColor
+import com.example.ui.theme.DEFAULT_ACCENT_HEX
+import com.example.ui.theme.MonoFontFamily
 import com.example.ui.viewmodel.MainViewModel
 import com.example.update.ui.UpdateSettingsCard
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -94,7 +97,7 @@ fun SettingsScreen(
     // Theme & Personalization from Room
     val themePref by viewModel.themePreference.collectAsStateWithLifecycle()
     val activeThemeMode = themePref?.themeMode ?: "DARK"
-    val activeAccentHex = themePref?.accentColorHex ?: "#1DB954"
+    val activeAccentHex = themePref?.accentColorHex ?: DEFAULT_ACCENT_HEX
     val activeAmoled = themePref?.pureBlackAmoled ?: false
 
     // Sleep Timer from ViewModel / Room
@@ -110,7 +113,7 @@ fun SettingsScreen(
         mutableStateOf(sleepTimerPref?.fadeOutEnabled ?: true)
     }
 
-    // Playback preferences
+    // Playback preferences (Room-persisted via PlayerSettingsEntity)
     val gapless by viewModel.gaplessPlayback.collectAsStateWithLifecycle()
     val autoPauseHeadset by viewModel.autoPauseOnHeadset.collectAsStateWithLifecycle()
     val crossfade by viewModel.crossfadeSeconds.collectAsStateWithLifecycle()
@@ -119,6 +122,7 @@ fun SettingsScreen(
     val hwAccel by viewModel.hardwareAcceleration.collectAsStateWithLifecycle()
     val resumeVid by viewModel.resumeVideo.collectAsStateWithLifecycle()
     val defaultSpeed by viewModel.defaultVideoSpeed.collectAsStateWithLifecycle()
+    val videoBgAudio by viewModel.videoBackgroundAudio.collectAsStateWithLifecycle()
 
     // Gesture preferences
     val doubleTapSeek by viewModel.doubleTapSeekSeconds.collectAsStateWithLifecycle()
@@ -126,9 +130,10 @@ fun SettingsScreen(
     val gestureVolume by viewModel.gestureVolume.collectAsStateWithLifecycle()
     val gestureScrub by viewModel.gestureScrub.collectAsStateWithLifecycle()
 
-    // Media scan & exclusions
+    // Media scan, exclusions & appearance
     val minAudioDur by viewModel.minAudioDurationSeconds.collectAsStateWithLifecycle()
     val autoScan by viewModel.autoScanOnLaunch.collectAsStateWithLifecycle()
+    val dynamicArtworkColor by viewModel.dynamicArtworkColor.collectAsStateWithLifecycle()
     val hiddenFolders by viewModel.hiddenVideoFolderPaths.collectAsStateWithLifecycle()
 
     // Equalizer state
@@ -140,6 +145,8 @@ fun SettingsScreen(
     var showAboutDialog by remember { mutableStateOf(false) }
     var showPrivacyDialog by remember { mutableStateOf(false) }
     var showHiddenFoldersDialog by remember { mutableStateOf(false) }
+    var showCrashLogsDialog by remember { mutableStateOf(false) }
+    var crashLogSnapshot by remember { mutableStateOf("") }
 
     val primaryColor = MaterialTheme.colorScheme.primary
     val surfaceColor = MaterialTheme.colorScheme.surface
@@ -213,9 +220,9 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         val themeChoices = listOf(
-                            Triple("DARK", "Dark Theme", "Classic Spotify-inspired dark layout"),
+                            Triple("DARK", "Dark Theme", "Midnight slate-indigo canvas with clear separation"),
                             Triple("AMOLED", "AMOLED Black Theme", "True pure black #000000 for OLED energy savings"),
-                            Triple("LIGHT", "Light Theme", "Crisp, bright surface with clean contrast"),
+                            Triple("LIGHT", "Light Theme", "Warm daylight paper surface with high-contrast ink"),
                             Triple("SYSTEM", "Follow System", "Adapts automatically to Android system mode")
                         )
 
@@ -322,13 +329,24 @@ fun SettingsScreen(
                                         Icon(
                                             imageVector = Icons.Default.Check,
                                             contentDescription = "Selected",
-                                            tint = if (opt.hex == "#FFB300" || opt.hex == "#00E676") Color.Black else Color.White,
+                                            tint = ContrastUtils.readableOnColor(opt.color),
                                             modifier = Modifier.size(20.dp)
                                         )
                                     }
                                 }
                             }
                         }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+                        SettingsDivider()
+
+                        SettingsToggleRow(
+                            title = "Dynamic Artwork Color",
+                            subtitle = "Blend Now Playing & theme accents subtly from album art",
+                            checked = dynamicArtworkColor,
+                            onCheckedChange = viewModel::setDynamicArtworkColor,
+                            testTag = "toggle_dynamic_artwork_color"
+                        )
                     }
                 }
             }
@@ -383,7 +401,7 @@ fun SettingsScreen(
                             title = "Gapless Playback",
                             subtitle = "Eliminate silent transitions between album songs",
                             checked = gapless,
-                            onCheckedChange = { viewModel.gaplessPlayback.value = it },
+                            onCheckedChange = viewModel::setGaplessPlayback,
                             testTag = "toggle_gapless"
                         )
 
@@ -393,7 +411,7 @@ fun SettingsScreen(
                             title = "Auto-Pause on Disconnect",
                             subtitle = "Pause music when wired or Bluetooth headphones unplug",
                             checked = autoPauseHeadset,
-                            onCheckedChange = { viewModel.autoPauseOnHeadset.value = it },
+                            onCheckedChange = viewModel::setAutoPauseOnHeadset,
                             testTag = "toggle_auto_pause_headset"
                         )
 
@@ -426,13 +444,13 @@ fun SettingsScreen(
                                         shape = RoundedCornerShape(8.dp),
                                         color = if (isSelected) primaryColor else MaterialTheme.colorScheme.surfaceVariant,
                                         modifier = Modifier
-                                            .clickable { viewModel.crossfadeSeconds.value = sec }
+                                            .clickable { viewModel.setCrossfadeSeconds(sec) }
                                             .testTag("crossfade_${sec}s")
                                     ) {
                                         Text(
                                             text = if (sec == 0) "Off" else "${sec}s",
                                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                            color = if (isSelected) Color.Black else onSurface,
+                                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else onSurface,
                                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                             fontSize = 12.sp
                                         )
@@ -461,7 +479,7 @@ fun SettingsScreen(
                             title = "Hardware Acceleration",
                             subtitle = "Use AndroidX Media3 hardware video decoding",
                             checked = hwAccel,
-                            onCheckedChange = { viewModel.hardwareAcceleration.value = it },
+                            onCheckedChange = viewModel::setHardwareAcceleration,
                             testTag = "toggle_hw_accel"
                         )
 
@@ -471,8 +489,18 @@ fun SettingsScreen(
                             title = "Resume Video Playback",
                             subtitle = "Continue playing from where you last left off",
                             checked = resumeVid,
-                            onCheckedChange = { viewModel.resumeVideo.value = it },
+                            onCheckedChange = viewModel::setResumeVideo,
                             testTag = "toggle_resume_playback"
+                        )
+
+                        SettingsDivider()
+
+                        SettingsToggleRow(
+                            title = "Background Video Audio",
+                            subtitle = "Keep video audio playing when switching away from player",
+                            checked = videoBgAudio,
+                            onCheckedChange = viewModel::setVideoBackgroundAudio,
+                            testTag = "toggle_video_background_audio"
                         )
 
                         SettingsDivider()
@@ -504,13 +532,13 @@ fun SettingsScreen(
                                         shape = RoundedCornerShape(8.dp),
                                         color = if (isSelected) primaryColor else MaterialTheme.colorScheme.surfaceVariant,
                                         modifier = Modifier
-                                            .clickable { viewModel.defaultVideoSpeed.value = spd }
+                                            .clickable { viewModel.setDefaultVideoSpeed(spd) }
                                             .testTag("speed_${spd}x")
                                     ) {
                                         Text(
                                             text = "${spd}x",
                                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                                            color = if (isSelected) Color.Black else onSurface,
+                                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else onSurface,
                                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                             fontSize = 11.sp
                                         )
@@ -548,13 +576,13 @@ fun SettingsScreen(
                                         shape = RoundedCornerShape(8.dp),
                                         color = if (isSelected) primaryColor else MaterialTheme.colorScheme.surfaceVariant,
                                         modifier = Modifier
-                                            .clickable { viewModel.doubleTapSeekSeconds.value = sec }
+                                            .clickable { viewModel.setDoubleTapSeekSeconds(sec) }
                                             .testTag("seek_${sec}s")
                                     ) {
                                         Text(
                                             text = "${sec}s",
                                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                                            color = if (isSelected) Color.Black else onSurface,
+                                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else onSurface,
                                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                             fontSize = 12.sp
                                         )
@@ -569,7 +597,7 @@ fun SettingsScreen(
                             title = "Brightness Swipe (Left)",
                             subtitle = "Vertical swipe on left half to adjust screen brightness",
                             checked = gestureBrightness,
-                            onCheckedChange = { viewModel.gestureBrightness.value = it },
+                            onCheckedChange = viewModel::setGestureBrightness,
                             testTag = "toggle_gesture_brightness"
                         )
 
@@ -579,7 +607,7 @@ fun SettingsScreen(
                             title = "Volume Swipe (Right)",
                             subtitle = "Vertical swipe on right half to adjust media volume",
                             checked = gestureVolume,
-                            onCheckedChange = { viewModel.gestureVolume.value = it },
+                            onCheckedChange = viewModel::setGestureVolume,
                             testTag = "toggle_gesture_volume"
                         )
 
@@ -589,7 +617,7 @@ fun SettingsScreen(
                             title = "Horizontal Scrub Seek",
                             subtitle = "Swipe horizontally anywhere to fast-scrub video timeline",
                             checked = gestureScrub,
-                            onCheckedChange = { viewModel.gestureScrub.value = it },
+                            onCheckedChange = viewModel::setGestureScrub,
                             testTag = "toggle_gesture_scrub"
                         )
                     }
@@ -633,8 +661,8 @@ fun SettingsScreen(
                                             color = primaryColor
                                         )
                                         Text(
-                                            text = String.format("%02d:%02d remaining until pause", m, s),
-                                            style = MaterialTheme.typography.bodySmall,
+                                            text = String.format(Locale.US, "%02d:%02d remaining until pause", m, s),
+                                            style = MaterialTheme.typography.bodySmall.copy(fontFamily = MonoFontFamily),
                                             color = onSurface
                                         )
                                     }
@@ -676,7 +704,7 @@ fun SettingsScreen(
                                             Text(
                                                 text = "${mins}m",
                                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                                color = if (isSelected) Color.Black else onSurface,
+                                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else onSurface,
                                                 fontSize = 12.sp
                                             )
                                         }
@@ -804,13 +832,13 @@ fun SettingsScreen(
                                         shape = RoundedCornerShape(8.dp),
                                         color = if (isSelected) primaryColor else MaterialTheme.colorScheme.surfaceVariant,
                                         modifier = Modifier
-                                            .clickable { viewModel.minAudioDurationSeconds.value = dur }
+                                            .clickable { viewModel.setMinAudioDurationSeconds(dur) }
                                             .testTag("filter_${dur}s")
                                     ) {
                                         Text(
                                             text = if (dur == 0) "None" else "${dur}s",
                                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                                            color = if (isSelected) Color.Black else onSurface,
+                                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else onSurface,
                                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                             fontSize = 11.sp
                                         )
@@ -823,9 +851,9 @@ fun SettingsScreen(
 
                         SettingsToggleRow(
                             title = "Scan Media on Launch",
-                            subtitle = "Automatically re-index media library when opening Melody Player",
+                            subtitle = "Automatically re-index media library when opening MT Player",
                             checked = autoScan,
-                            onCheckedChange = { viewModel.autoScanOnLaunch.value = it },
+                            onCheckedChange = viewModel::setAutoScanOnLaunch,
                             testTag = "toggle_auto_scan"
                         )
 
@@ -902,7 +930,7 @@ fun SettingsScreen(
                             Icon(
                                 imageVector = Icons.Default.DeleteSweep,
                                 contentDescription = "Clear Music History",
-                                tint = Color(0xFFEF5350),
+                                tint = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.size(22.dp)
                             )
                         }
@@ -934,7 +962,7 @@ fun SettingsScreen(
                             Icon(
                                 imageVector = Icons.Default.DeleteSweep,
                                 contentDescription = "Clear Video History",
-                                tint = Color(0xFFEF5350),
+                                tint = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.size(22.dp)
                             )
                         }
@@ -976,7 +1004,7 @@ fun SettingsScreen(
                                     text = "MT",
                                     fontWeight = FontWeight.Black,
                                     fontSize = 16.sp,
-                                    color = Color.Black
+                                    color = MaterialTheme.colorScheme.onPrimary
                                 )
                             }
                             Spacer(modifier = Modifier.width(14.dp))
@@ -1066,6 +1094,41 @@ fun SettingsScreen(
                                 modifier = Modifier.size(20.dp)
                             )
                         }
+
+                        SettingsDivider()
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable {
+                                    crashLogSnapshot = viewModel.readCrashLogs()
+                                    showCrashLogsDialog = true
+                                }
+                                .padding(vertical = 8.dp)
+                                .testTag("setting_crash_logs"),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Diagnostics & Crash Logs",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = onSurface
+                                )
+                                Text(
+                                    text = "Inspect or clear on-device diagnostic error reports",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = onSurfaceVariant
+                                )
+                            }
+                            Icon(
+                                imageVector = Icons.Default.Storage,
+                                contentDescription = "Crash Logs",
+                                tint = primaryColor,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -1092,7 +1155,7 @@ fun SettingsScreen(
                         showClearListeningDialog = false
                     }
                 ) {
-                    Text("Clear", color = Color(0xFFEF5350), fontWeight = FontWeight.Bold)
+                    Text("Clear", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -1124,7 +1187,7 @@ fun SettingsScreen(
                         showClearWatchingDialog = false
                     }
                 ) {
-                    Text("Clear", color = Color(0xFFEF5350), fontWeight = FontWeight.Bold)
+                    Text("Clear", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -1221,7 +1284,7 @@ fun SettingsScreen(
                             .background(primaryColor),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("MT", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Color.Black)
+                        Text("MT", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = MaterialTheme.colorScheme.onPrimary)
                     }
                     Spacer(modifier = Modifier.width(10.dp))
                     Text("About MT Player", color = onSurface)
@@ -1256,7 +1319,7 @@ fun SettingsScreen(
                         }
                     }
                     Text(
-                        text = "• Core Engine: AndroidX Media3 (ExoPlayer 1.5.1)\n• Database: Android Room SQLite (12 Persistent Entities)\n• Audio Effects: Android AudioEffect Framework (5-Band Equalizer, Bass Boost, 3D Virtualizer)\n• Video Player: MX Player-style gestures (brightness, volume, scrub seeking, auto-PiP)\n• UI Architecture: 100% Jetpack Compose with Material Design 3\n• Media Source: Android MediaStore API (Direct on-device storage)",
+                        text = "• Core Engine: AndroidX Media3 (ExoPlayer 1.5.1)\n• Database: Android Room SQLite (Persistent Entities)\n• Audio Effects: Android AudioEffect Framework (5-Band Equalizer, Bass Boost, 3D Virtualizer)\n• Video Player: MX Player-style gestures (brightness, volume, scrub seeking, auto-PiP)\n• UI Architecture: 100% Jetpack Compose with Material Design 3\n• Media Source: Android MediaStore API (Direct on-device storage)",
                         style = MaterialTheme.typography.bodySmall,
                         color = onSurfaceVariant,
                         lineHeight = 18.sp
@@ -1299,13 +1362,13 @@ fun SettingsScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        text = "Your privacy is paramount. Melody Player is architected with strict zero-knowledge principles:",
+                        text = "Your privacy is paramount. MT Player is architected with strict zero-knowledge principles:",
                         style = MaterialTheme.typography.bodyMedium,
                         color = onSurface,
                         fontWeight = FontWeight.Medium
                     )
                     Text(
-                        text = "1. 100% Local Playback: All songs and videos are loaded directly from your device storage. We never upload, stream, or index your private content remotely.\n\n2. Zero Data Telemetry: There are NO tracking beacons, analytics SDKs, session loggers, or advertisement frameworks in this app.\n\n3. Local Database: All playlists, favorites, listening stats, and equalizer curves are stored strictly in an on-device SQLite database (melody_player_local.db) in your private application sandbox.\n\n4. Zero Cloud Sync: We will never require login, sign-up, or email registration.",
+                        text = "1. 100% Local Playback: All songs and videos are loaded directly from your device storage. We never upload, stream, or index your private content remotely.\n\n2. Zero Data Telemetry: There are NO tracking beacons, analytics SDKs, session loggers, or advertisement frameworks in this app.\n\n3. Local Database: All playlists, favorites, listening stats, and equalizer curves are stored strictly in an on-device SQLite database (mt_player_local.db) in your private application sandbox.\n\n4. Zero Cloud Sync: We will never require login, sign-up, or email registration.",
                         style = MaterialTheme.typography.bodySmall,
                         color = onSurfaceVariant,
                         lineHeight = 18.sp
@@ -1315,6 +1378,40 @@ fun SettingsScreen(
             confirmButton = {
                 TextButton(onClick = { showPrivacyDialog = false }) {
                     Text("Understood", color = primaryColor, fontWeight = FontWeight.Bold)
+                }
+            },
+            containerColor = surfaceColor
+        )
+    }
+
+    // -------------------------------------------------------------------------
+    // Dialogs: Local Crash & Diagnostic Logs
+    // -------------------------------------------------------------------------
+    if (showCrashLogsDialog) {
+        AlertDialog(
+            onDismissRequest = { showCrashLogsDialog = false },
+            title = { Text("Diagnostics & Crash Logs", color = onSurface) },
+            text = {
+                Text(
+                    text = crashLogSnapshot.ifBlank { "No diagnostic or crash logs recorded." },
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = MonoFontFamily),
+                    color = onSurfaceVariant,
+                    maxLines = 18
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showCrashLogsDialog = false }) {
+                    Text("Close", color = primaryColor, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.clearCrashLogs()
+                        crashLogSnapshot = "Logs cleared."
+                    }
+                ) {
+                    Text("Clear Logs", color = MaterialTheme.colorScheme.error)
                 }
             },
             containerColor = surfaceColor
@@ -1386,7 +1483,7 @@ fun SettingsToggleRow(
             checked = checked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.Black,
+                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                 checkedTrackColor = primaryColor,
                 uncheckedThumbColor = onSurfaceVariant,
                 uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant

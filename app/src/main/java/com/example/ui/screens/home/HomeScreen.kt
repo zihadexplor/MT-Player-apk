@@ -48,12 +48,6 @@ import com.example.ui.components.EmptyMediaView
 import com.example.ui.components.StorageStatBanner
 import com.example.ui.components.TrackItemRow
 import com.example.ui.components.VideoGridCard
-import com.example.ui.theme.DarkOutline
-import com.example.ui.theme.DarkSurfaceContainerHigh
-import com.example.ui.theme.SpotifyGreen
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TextTertiary
 import java.util.Calendar
 
 @Composable

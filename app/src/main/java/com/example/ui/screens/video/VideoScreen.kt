@@ -75,14 +75,6 @@ import com.example.ui.components.VideoFolderCard
 import com.example.ui.components.VideoGridCard
 import com.example.ui.components.VideoRowCard
 import com.example.ui.components.formatFileSize
-import com.example.ui.theme.DarkOutline
-import com.example.ui.theme.DarkSurface
-import com.example.ui.theme.DarkSurfaceContainerHigh
-import com.example.ui.theme.DarkSurfaceVariant
-import com.example.ui.theme.SpotifyGreen
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TextTertiary
 
 @Composable
 fun VideoScreen(
@@ -141,7 +133,7 @@ fun VideoScreen(
                 value = searchQuery,
                 onValueChange = onSearchQueryChange,
                 placeholder = {
-                    Text("Search offline videos by title or folder...", color = TextTertiary, fontSize = 13.sp)
+                    Text("Search offline videos by title or folder...", color = MaterialTheme.colorScheme.outline, fontSize = 13.sp)
                 },
                 leadingIcon = {
                     Icon(
@@ -211,7 +203,7 @@ fun VideoScreen(
                                 text = title,
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = if (activeTab == index) FontWeight.Bold else FontWeight.Normal,
-                                color = if (activeTab == index) TextPrimary else TextSecondary
+                                color = if (activeTab == index) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         },
                         modifier = Modifier.testTag("video_tab_$index")
@@ -243,7 +235,7 @@ fun VideoScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back to Folders",
-                            tint = Color.White
+                            tint = MaterialTheme.colorScheme.onBackground
                         )
                     }
                     Spacer(modifier = Modifier.width(6.dp))
@@ -252,14 +244,14 @@ fun VideoScreen(
                             text = selectedFolder.name,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary,
+                            color = MaterialTheme.colorScheme.onBackground,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             text = "${selectedFolder.videoCount} videos • ${formatFileSize(selectedFolder.totalSizeBytes)}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextTertiary,
+                            color = MaterialTheme.colorScheme.outline,
                             fontSize = 11.sp
                         )
                     }
@@ -276,7 +268,7 @@ fun VideoScreen(
                 Text(
                     text = countText,
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextTertiary
+                    color = MaterialTheme.colorScheme.outline
                 )
             }
 
@@ -295,7 +287,7 @@ fun VideoScreen(
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.Sort,
                                 contentDescription = "Sort videos",
-                                tint = SpotifyGreen,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
@@ -311,7 +303,7 @@ fun VideoScreen(
                             Text(
                                 text = sortLabel,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = SpotifyGreen,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -372,7 +364,7 @@ fun VideoScreen(
                     Icon(
                         imageVector = if (isGridView) Icons.Default.List else Icons.Default.GridView,
                         contentDescription = "Toggle Grid/List",
-                        tint = TextSecondary,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -388,7 +380,7 @@ fun VideoScreen(
                     Icon(
                         imageVector = Icons.Default.Refresh,
                         contentDescription = "Rescan offline videos",
-                        tint = SpotifyGreen,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -449,7 +441,7 @@ fun VideoScreen(
                                             text = "Continue Watching",
                                             style = MaterialTheme.typography.titleMedium,
                                             fontWeight = FontWeight.Bold,
-                                            color = TextPrimary
+                                            color = MaterialTheme.colorScheme.onBackground
                                         )
                                         TextButton(onClick = { onTabChange(2) }) {
                                             Text("See All", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)

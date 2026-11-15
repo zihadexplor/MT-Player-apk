@@ -63,17 +63,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.player.equalizer.EqualizerBand
 import com.example.player.equalizer.EqualizerState
-import com.example.ui.theme.DarkBackground
-import com.example.ui.theme.DarkOutline
-import com.example.ui.theme.DarkOutlineVariant
-import com.example.ui.theme.DarkSurface
-import com.example.ui.theme.DarkSurfaceContainerHigh
-import com.example.ui.theme.DarkSurfaceVariant
-import com.example.ui.theme.SpotifyGreen
-import com.example.ui.theme.SpotifyGreenBright
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TextTertiary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,7 +90,7 @@ fun EqualizerScreen(
                         text = "Equalizer & Sound FX",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 },
                 navigationIcon = {
@@ -114,7 +103,7 @@ fun EqualizerScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = TextPrimary
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 },
@@ -128,7 +117,7 @@ fun EqualizerScreen(
                         Icon(
                             imageVector = Icons.Default.RestartAlt,
                             contentDescription = "Reset to Default",
-                            tint = TextSecondary
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
@@ -266,7 +255,7 @@ fun EqualizerScreen(
                         text = "Presets",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary,
+                        color = MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
 
@@ -307,7 +296,7 @@ fun EqualizerScreen(
                     text = "Frequency Bands",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = MaterialTheme.colorScheme.onBackground
                 )
             }
 
@@ -327,7 +316,7 @@ fun EqualizerScreen(
                     text = "Sound Enhancements",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.padding(top = 8.dp)
                 )
             }
@@ -373,6 +362,10 @@ fun EqualizerFrequencyCurve(
     isEnabled: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val curveColor = if (isEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+    val refLineColor = MaterialTheme.colorScheme.outlineVariant
+    val dotCoreColor = MaterialTheme.colorScheme.surface
+
     Canvas(modifier = modifier) {
         val width = size.width
         val height = size.height
@@ -380,7 +373,7 @@ fun EqualizerFrequencyCurve(
 
         // Draw 0dB reference center line
         drawLine(
-            color = Color(0x33FFFFFF),
+            color = refLineColor,
             start = Offset(0f, centerY),
             end = Offset(width, centerY),
             strokeWidth = 1.dp.toPx()
@@ -391,7 +384,6 @@ fun EqualizerFrequencyCurve(
         val stepX = width / (bands.size + 1)
         val points = bands.mapIndexed { index, band ->
             val x = stepX * (index + 1)
-            // Range usually -1500 to +1500. Map to height (0 at top is +1500, bottom is -1500)
             val min = band.minLevelMb.toFloat()
             val max = band.maxLevelMb.toFloat()
             val ratio = if (max > min) (band.levelMb - min) / (max - min) else 0.5f
@@ -399,7 +391,6 @@ fun EqualizerFrequencyCurve(
             Offset(x, y)
         }
 
-        // Draw smooth path
         val path = Path().apply {
             moveTo(0f, centerY)
             points.forEachIndexed { i, pt ->
@@ -423,13 +414,11 @@ fun EqualizerFrequencyCurve(
             close()
         }
 
-        // Gradient Fill
-        val curveColor = if (isEnabled) SpotifyGreen else Color(0xFF6B7A72)
         drawPath(
             path = fillPath,
             brush = Brush.verticalGradient(
                 colors = listOf(
-                    curveColor.copy(alpha = if (isEnabled) 0.3f else 0.1f),
+                    curveColor.copy(alpha = if (isEnabled) 0.30f else 0.10f),
                     Color.Transparent
                 ),
                 startY = 0f,
@@ -437,14 +426,12 @@ fun EqualizerFrequencyCurve(
             )
         )
 
-        // Curve Stroke
         drawPath(
             path = path,
             color = curveColor,
             style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
         )
 
-        // Band Points
         points.forEach { pt ->
             drawCircle(
                 color = curveColor,
@@ -452,7 +439,7 @@ fun EqualizerFrequencyCurve(
                 center = pt
             )
             drawCircle(
-                color = if (isEnabled) Color.White else Color.Gray,
+                color = dotCoreColor,
                 radius = 2.5.dp.toPx(),
                 center = pt
             )

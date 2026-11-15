@@ -14,6 +14,7 @@ import com.example.data.database.HiddenFolderEntity
 import com.example.data.database.LastMusicPlaybackEntity
 import com.example.data.database.LastVideoPlaybackEntity
 import com.example.data.database.MTPlayerDatabase
+import com.example.data.database.PlayerSettingsEntity
 import com.example.data.database.PlaylistEntity
 import com.example.data.database.PlaylistSongCrossRef
 import com.example.data.database.SleepTimerPreferenceEntity
@@ -21,13 +22,14 @@ import com.example.data.database.ThemePreferenceEntity
 import com.example.data.model.Album
 import com.example.data.model.Artist
 import com.example.data.model.AudioTrack
+import com.example.data.model.Genre
 import com.example.data.model.MediaFolder
 import com.example.data.model.MusicFolder
 import com.example.data.model.Playlist
 import com.example.data.model.StorageStats
 import com.example.data.model.VideoFolder
 import com.example.data.model.VideoItem
-import kotlinx.coroutines.CoroutineScope
+import com.example.util.CrashLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,7 +37,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.UUID
@@ -46,6 +49,7 @@ interface MediaRepository {
     val videoItems: Flow<List<VideoItem>>
     val albums: Flow<List<Album>>
     val artists: Flow<List<Artist>>
+    val genres: Flow<List<Genre>>
     val musicFolders: Flow<List<MusicFolder>>
     val folders: Flow<List<MediaFolder>>
     val playlists: Flow<List<Playlist>>
@@ -60,12 +64,13 @@ interface MediaRepository {
     val continueWatchingVideos: Flow<List<VideoItem>>
     val favoriteVideos: Flow<List<VideoItem>>
 
-    // Room Database Phase 10 flows
+    // Room Database preference & playback flows
     val lastMusicPlayback: Flow<LastMusicPlaybackEntity?>
     val lastVideoPlaybackPositions: Flow<List<LastVideoPlaybackEntity>>
     val equalizerPreference: Flow<EqualizerPreferenceEntity?>
     val themePreference: Flow<ThemePreferenceEntity?>
     val sleepTimerPreference: Flow<SleepTimerPreferenceEntity?>
+    val playerSettings: Flow<PlayerSettingsEntity?>
 
     suspend fun scanDeviceMedia()
     suspend fun toggleFavorite(trackId: String)
@@ -92,6 +97,7 @@ interface MediaRepository {
     suspend fun saveEqualizerPreference(isEnabled: Boolean, presetName: String, bassBoost: Int, virtualizer: Int, bandLevelsCsv: String)
     suspend fun saveThemePreference(themeMode: String, accentColorHex: String, pureBlackAmoled: Boolean)
     suspend fun saveSleepTimerPreference(durationMinutes: Int, finishLastSong: Boolean, fadeOutEnabled: Boolean)
+    suspend fun savePlayerSettings(entity: PlayerSettingsEntity)
     suspend fun clearListeningHistory()
     suspend fun clearWatchingHistory()
 }
@@ -102,6 +108,10 @@ class OfflineMediaRepository(
 
     private val database = MTPlayerDatabase.getInstance(context)
     private val dao = database.mediaDao()
+    private val scanMutex = Mutex()
+
+    @Volatile
+    private var legacyMigrated = false
 
     private val _storageStats = MutableStateFlow(StorageStats())
     override val storageStats = _storageStats.asStateFlow()
@@ -120,12 +130,13 @@ class OfflineMediaRepository(
         list.map { it.folderPath }.toSet()
     }
 
-    // 9, 10, 12. Preferences from Room
+    // 9, 10, 12, 13. Preferences from Room
     override val lastMusicPlayback: Flow<LastMusicPlaybackEntity?> = dao.getLastMusicPlaybackPosition()
     override val lastVideoPlaybackPositions: Flow<List<LastVideoPlaybackEntity>> = dao.getAllVideoPlaybackPositions()
     override val equalizerPreference: Flow<EqualizerPreferenceEntity?> = dao.getEqualizerPreference()
     override val themePreference: Flow<ThemePreferenceEntity?> = dao.getThemePreference()
     override val sleepTimerPreference: Flow<SleepTimerPreferenceEntity?> = dao.getSleepTimerPreference()
+    override val playerSettings: Flow<PlayerSettingsEntity?> = dao.getPlayerSettings()
 
     // Audio tracks mapped with Room favorite status and play counts
     override val audioTracks: Flow<List<AudioTrack>> = combine(
@@ -169,6 +180,18 @@ class OfflineMediaRepository(
                     tracks = tracksOfArtist
                 )
             }.sortedBy { it.name.lowercase() }
+    }
+
+    override val genres: Flow<List<Genre>> = audioTracks.map { tracks ->
+        tracks.groupBy { it.genre.ifBlank { "General" } }
+            .map { (genreName, genreTracks) ->
+                Genre(
+                    name = genreName,
+                    trackCount = genreTracks.size,
+                    tracks = genreTracks
+                )
+            }
+            .sortedWith(compareBy<Genre> { it.name == "General" }.thenBy { it.name.lowercase() })
     }
 
     override val musicFolders: Flow<List<MusicFolder>> = audioTracks.map { tracks ->
@@ -320,14 +343,9 @@ class OfflineMediaRepository(
         map.values.sortedBy { it.name.lowercase() }
     }
 
-    init {
-        // Migrate legacy SharedPreferences to Room if present
-        CoroutineScope(Dispatchers.IO).launch {
-            migrateLegacyPrefsToRoom()
-        }
-    }
-
-    private suspend fun migrateLegacyPrefsToRoom() {
+    private suspend fun migrateLegacyPrefsIfNeeded() {
+        if (legacyMigrated) return
+        legacyMigrated = true
         try {
             val videoPrefs = context.getSharedPreferences("mt_player_video_prefs", Context.MODE_PRIVATE)
             val favVideoIds = videoPrefs.getStringSet("favorite_video_ids", null)
@@ -341,7 +359,7 @@ class OfflineMediaRepository(
                 }
             }
 
-            // Ensure starter playlists exist
+            // Ensure starter playlists and default player settings exist
             val existingPlaylists = dao.getAllPlaylistsDirect()
             if (existingPlaylists.isEmpty()) {
                 dao.insertPlaylists(
@@ -352,7 +370,12 @@ class OfflineMediaRepository(
                     )
                 )
             }
-        } catch (_: Exception) {}
+            if (dao.getPlayerSettingsDirect() == null) {
+                dao.savePlayerSettings(PlayerSettingsEntity())
+            }
+        } catch (e: Exception) {
+            CrashLogger.logNonFatal("MediaRepository", "Legacy migration failed", e)
+        }
     }
 
     override fun updatePermissionStatus(granted: Boolean, permanentlyDenied: Boolean) {
@@ -363,264 +386,325 @@ class OfflineMediaRepository(
     }
 
     override suspend fun scanDeviceMedia() = withContext(Dispatchers.IO) {
-        _storageStats.value = _storageStats.value.copy(isScanning = true)
+        scanMutex.withLock {
+            migrateLegacyPrefsIfNeeded()
+            _storageStats.value = _storageStats.value.copy(isScanning = true)
 
-        val scannedAudio = mutableListOf<AudioTrack>()
-        val scannedVideos = mutableListOf<VideoItem>()
+            val scannedAudio = mutableListOf<AudioTrack>()
+            val scannedVideos = mutableListOf<VideoItem>()
 
+            try {
+                val resolver: ContentResolver = context.contentResolver
+                val minAudioDurationMs = ((dao.getPlayerSettingsDirect()?.minAudioDurationSeconds ?: 30) * 1000L)
+                    .coerceAtLeast(0L)
+                val audioGenreMap = queryAudioGenreMap(resolver)
+
+                // 1. Audio MediaStore Query
+                val audioUri: Uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
+                } else {
+                    MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+                }
+
+                val audioProjection = mutableListOf(
+                    MediaStore.Audio.Media._ID,
+                    MediaStore.Audio.Media.TITLE,
+                    MediaStore.Audio.Media.ARTIST,
+                    MediaStore.Audio.Media.ALBUM,
+                    MediaStore.Audio.Media.DURATION,
+                    MediaStore.Audio.Media.SIZE,
+                    MediaStore.Audio.Media.ALBUM_ID,
+                    MediaStore.Audio.Media.DATE_ADDED
+                ).apply {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        add(MediaStore.Audio.Media.RELATIVE_PATH)
+                        add(MediaStore.Audio.Media.BUCKET_DISPLAY_NAME)
+                    }
+                    add(MediaStore.Audio.Media.DATA)
+                }.toTypedArray()
+
+                val audioSelection = if (minAudioDurationMs > 0L) {
+                    "${MediaStore.Audio.Media.IS_MUSIC} != 0 OR ${MediaStore.Audio.Media.DURATION} >= $minAudioDurationMs"
+                } else {
+                    null
+                }
+
+                val audioCursor: Cursor? = resolver.query(
+                    audioUri,
+                    audioProjection,
+                    audioSelection,
+                    null,
+                    "${MediaStore.Audio.Media.TITLE} ASC"
+                )
+
+                audioCursor?.use { cursor ->
+                    val idCol = cursor.getColumnIndex(MediaStore.Audio.Media._ID)
+                    val titleCol = cursor.getColumnIndex(MediaStore.Audio.Media.TITLE)
+                    val artistCol = cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST)
+                    val albumCol = cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM)
+                    val durationCol = cursor.getColumnIndex(MediaStore.Audio.Media.DURATION)
+                    val sizeCol = cursor.getColumnIndex(MediaStore.Audio.Media.SIZE)
+                    val albumIdCol = cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ID)
+                    val dateAddedCol = cursor.getColumnIndex(MediaStore.Audio.Media.DATE_ADDED)
+                    val dataCol = cursor.getColumnIndex(MediaStore.Audio.Media.DATA)
+                    val relPathCol = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        cursor.getColumnIndex(MediaStore.Audio.Media.RELATIVE_PATH)
+                    } else -1
+                    val bucketCol = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        cursor.getColumnIndex(MediaStore.Audio.Media.BUCKET_DISPLAY_NAME)
+                    } else -1
+
+                    while (cursor.moveToNext()) {
+                        val id = cursor.getLong(idCol)
+                        val duration = if (durationCol >= 0) cursor.getLong(durationCol) else 0L
+                        if (minAudioDurationMs > 0L && duration in 1L until minAudioDurationMs) {
+                            continue
+                        }
+
+                        val title = if (titleCol >= 0) cursor.getString(titleCol) ?: "Unknown Title" else "Unknown Title"
+                        val artist = if (artistCol >= 0) cursor.getString(artistCol) ?: "Unknown Artist" else "Unknown Artist"
+                        val album = if (albumCol >= 0) cursor.getString(albumCol) ?: "Unknown Album" else "Unknown Album"
+                        val size = if (sizeCol >= 0) cursor.getLong(sizeCol) else 0L
+                        val albumId = if (albumIdCol >= 0) cursor.getLong(albumIdCol) else 0L
+                        val dateAdded = if (dateAddedCol >= 0) cursor.getLong(dateAddedCol) * 1000L else 0L
+                        val rawFilePath = if (dataCol >= 0 && !cursor.isNull(dataCol)) cursor.getString(dataCol) ?: "" else ""
+
+                        var folderName = "Music"
+                        var folderPath = ""
+
+                        if (bucketCol >= 0 && !cursor.isNull(bucketCol)) {
+                            folderName = cursor.getString(bucketCol) ?: "Music"
+                        } else if (relPathCol >= 0 && !cursor.isNull(relPathCol)) {
+                            val rel = cursor.getString(relPathCol) ?: ""
+                            val parts = rel.trim('/').split('/')
+                            folderName = parts.lastOrNull()?.ifBlank { "Music" } ?: "Music"
+                            folderPath = rel
+                        } else if (rawFilePath.isNotBlank()) {
+                            val parentFile = File(rawFilePath).parentFile
+                            if (parentFile != null) {
+                                folderName = parentFile.name
+                                folderPath = parentFile.absolutePath
+                            }
+                        }
+
+                        if (folderPath.isBlank() && rawFilePath.isNotBlank()) {
+                            folderPath = File(rawFilePath).parentFile?.absolutePath ?: ""
+                        }
+
+                        val trackUri = ContentUris.withAppendedId(audioUri, id).toString()
+                        val albumArtUri = ContentUris.withAppendedId(
+                            Uri.parse("content://media/external/audio/albumart"),
+                            albumId
+                        ).toString()
+
+                        scannedAudio.add(
+                            AudioTrack(
+                                id = id.toString(),
+                                title = title,
+                                artist = artist,
+                                album = album,
+                                durationMs = duration,
+                                uri = trackUri,
+                                albumArtUri = albumArtUri,
+                                albumId = albumId,
+                                sizeBytes = size,
+                                folderName = folderName,
+                                folderPath = folderPath,
+                                filePath = rawFilePath,
+                                genre = audioGenreMap[id] ?: "",
+                                dateAdded = dateAdded,
+                                isFavorite = false,
+                                playCount = 0
+                            )
+                        )
+                    }
+                }
+
+                // 2. Video MediaStore Query
+                val videoUri: Uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
+                } else {
+                    MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+                }
+
+                val videoProjection = mutableListOf(
+                    MediaStore.Video.Media._ID,
+                    MediaStore.Video.Media.TITLE,
+                    MediaStore.Video.Media.DURATION,
+                    MediaStore.Video.Media.SIZE,
+                    MediaStore.Video.Media.DATE_ADDED,
+                    MediaStore.Video.Media.WIDTH,
+                    MediaStore.Video.Media.HEIGHT
+                ).apply {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        add(MediaStore.Video.Media.RELATIVE_PATH)
+                        add(MediaStore.Video.Media.BUCKET_DISPLAY_NAME)
+                    }
+                    add(MediaStore.Video.Media.DATA)
+                }.toTypedArray()
+
+                val videoCursor: Cursor? = resolver.query(
+                    videoUri,
+                    videoProjection,
+                    null,
+                    null,
+                    "${MediaStore.Video.Media.DATE_ADDED} DESC"
+                )
+
+                videoCursor?.use { cursor ->
+                    val idCol = cursor.getColumnIndex(MediaStore.Video.Media._ID)
+                    val titleCol = cursor.getColumnIndex(MediaStore.Video.Media.TITLE)
+                    val durationCol = cursor.getColumnIndex(MediaStore.Video.Media.DURATION)
+                    val sizeCol = cursor.getColumnIndex(MediaStore.Video.Media.SIZE)
+                    val dateAddedCol = cursor.getColumnIndex(MediaStore.Video.Media.DATE_ADDED)
+                    val widthCol = cursor.getColumnIndex(MediaStore.Video.Media.WIDTH)
+                    val heightCol = cursor.getColumnIndex(MediaStore.Video.Media.HEIGHT)
+                    val dataCol = cursor.getColumnIndex(MediaStore.Video.Media.DATA)
+                    val relPathCol = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        cursor.getColumnIndex(MediaStore.Video.Media.RELATIVE_PATH)
+                    } else -1
+                    val bucketCol = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        cursor.getColumnIndex(MediaStore.Video.Media.BUCKET_DISPLAY_NAME)
+                    } else -1
+
+                    while (cursor.moveToNext()) {
+                        val id = cursor.getLong(idCol)
+                        val title = if (titleCol >= 0) cursor.getString(titleCol) ?: "Video $id" else "Video $id"
+                        val duration = if (durationCol >= 0) cursor.getLong(durationCol) else 0L
+                        val size = if (sizeCol >= 0) cursor.getLong(sizeCol) else 0L
+                        val dateAdded = if (dateAddedCol >= 0) cursor.getLong(dateAddedCol) * 1000L else 0L
+                        val width = if (widthCol >= 0) cursor.getInt(widthCol) else 0
+                        val height = if (heightCol >= 0) cursor.getInt(heightCol) else 0
+
+                        var folderName = "Videos"
+                        var folderPath = ""
+
+                        if (bucketCol >= 0 && !cursor.isNull(bucketCol)) {
+                            folderName = cursor.getString(bucketCol) ?: "Videos"
+                        } else if (relPathCol >= 0 && !cursor.isNull(relPathCol)) {
+                            val rel = cursor.getString(relPathCol) ?: ""
+                            val parts = rel.trim('/').split('/')
+                            folderName = parts.lastOrNull()?.ifBlank { "Videos" } ?: "Videos"
+                            folderPath = rel
+                        } else if (dataCol >= 0 && !cursor.isNull(dataCol)) {
+                            val path = cursor.getString(dataCol) ?: ""
+                            val parentFile = File(path).parentFile
+                            if (parentFile != null) {
+                                folderName = parentFile.name
+                                folderPath = parentFile.absolutePath
+                            }
+                        }
+
+                        if (folderPath.isBlank() && dataCol >= 0 && !cursor.isNull(dataCol)) {
+                            folderPath = File(cursor.getString(dataCol) ?: "").parentFile?.absolutePath ?: ""
+                        }
+
+                        val uri = ContentUris.withAppendedId(videoUri, id).toString()
+                        val resolution = when {
+                            width >= 3840 || height >= 2160 -> "4K"
+                            width >= 1920 || height >= 1080 -> "1080p"
+                            width >= 1280 || height >= 720 -> "720p"
+                            width >= 854 || height >= 480 -> "480p"
+                            width > 0 -> "${height}p"
+                            else -> "HD"
+                        }
+
+                        scannedVideos.add(
+                            VideoItem(
+                                id = id.toString(),
+                                title = title,
+                                durationMs = duration,
+                                uri = uri,
+                                thumbnailUri = uri,
+                                sizeBytes = size,
+                                resolution = resolution,
+                                width = width,
+                                height = height,
+                                folderName = folderName,
+                                folderPath = folderPath,
+                                dateAdded = dateAdded,
+                                isFavorite = false,
+                                playbackPositionMs = 0L,
+                                lastWatchedTimestamp = 0L
+                            )
+                        )
+                    }
+                }
+
+                // Cleanup deleted / moved files safely in Room
+                val validSongIds = scannedAudio.map { it.id }
+                if (validSongIds.isNotEmpty()) {
+                    dao.cleanupOrphanFavoriteSongs(validSongIds)
+                    dao.cleanupOrphanPlaylistSongs(validSongIds)
+                    dao.cleanupOrphanListeningHistory(validSongIds)
+                }
+
+                val validVideoIds = scannedVideos.map { it.id }
+                if (validVideoIds.isNotEmpty()) {
+                    dao.cleanupOrphanFavoriteVideos(validVideoIds)
+                }
+            } catch (e: Exception) {
+                CrashLogger.logNonFatal("MediaRepository", "Media scan interrupted or denied", e)
+            }
+
+            _rawAudioTracks.value = scannedAudio
+            _allScannedVideos.value = scannedVideos
+
+            val totalAudioDuration = scannedAudio.sumOf { it.durationMs }
+            val totalSize = scannedAudio.sumOf { it.sizeBytes } + scannedVideos.sumOf { it.sizeBytes }
+
+            _storageStats.value = _storageStats.value.copy(
+                audioCount = scannedAudio.size,
+                videoCount = scannedVideos.size,
+                totalAudioDurationMs = totalAudioDuration,
+                totalStorageUsedBytes = totalSize,
+                isScanning = false
+            )
+        }
+    }
+
+    private fun queryAudioGenreMap(resolver: ContentResolver): Map<Long, String> {
+        val genreMap = mutableMapOf<Long, String>()
         try {
-            val resolver: ContentResolver = context.contentResolver
-
-            // 1. Audio MediaStore Query
-            val audioUri: Uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
-            } else {
-                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-            }
-
-            val audioProjection = mutableListOf(
-                MediaStore.Audio.Media._ID,
-                MediaStore.Audio.Media.TITLE,
-                MediaStore.Audio.Media.ARTIST,
-                MediaStore.Audio.Media.ALBUM,
-                MediaStore.Audio.Media.DURATION,
-                MediaStore.Audio.Media.SIZE,
-                MediaStore.Audio.Media.ALBUM_ID,
-                MediaStore.Audio.Media.DATE_ADDED
-            ).apply {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    add(MediaStore.Audio.Media.RELATIVE_PATH)
-                    add(MediaStore.Audio.Media.BUCKET_DISPLAY_NAME)
-                }
-                add(MediaStore.Audio.Media.DATA)
-            }.toTypedArray()
-
-            val audioSelection = "${MediaStore.Audio.Media.IS_MUSIC} != 0 OR ${MediaStore.Audio.Media.DURATION} > 10000"
-
-            val audioCursor: Cursor? = resolver.query(
-                audioUri,
-                audioProjection,
-                audioSelection,
+            val genresUri = MediaStore.Audio.Genres.EXTERNAL_CONTENT_URI
+            resolver.query(
+                genresUri,
+                arrayOf(MediaStore.Audio.Genres._ID, MediaStore.Audio.Genres.NAME),
                 null,
-                "${MediaStore.Audio.Media.TITLE} ASC"
-            )
-
-            audioCursor?.use { cursor ->
-                val idCol = cursor.getColumnIndex(MediaStore.Audio.Media._ID)
-                val titleCol = cursor.getColumnIndex(MediaStore.Audio.Media.TITLE)
-                val artistCol = cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST)
-                val albumCol = cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM)
-                val durationCol = cursor.getColumnIndex(MediaStore.Audio.Media.DURATION)
-                val sizeCol = cursor.getColumnIndex(MediaStore.Audio.Media.SIZE)
-                val albumIdCol = cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ID)
-                val dateAddedCol = cursor.getColumnIndex(MediaStore.Audio.Media.DATE_ADDED)
-                val dataCol = cursor.getColumnIndex(MediaStore.Audio.Media.DATA)
-                val relPathCol = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    cursor.getColumnIndex(MediaStore.Audio.Media.RELATIVE_PATH)
-                } else -1
-                val bucketCol = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    cursor.getColumnIndex(MediaStore.Audio.Media.BUCKET_DISPLAY_NAME)
-                } else -1
-
-                while (cursor.moveToNext()) {
-                    val id = cursor.getLong(idCol)
-                    val title = if (titleCol >= 0) cursor.getString(titleCol) ?: "Unknown Title" else "Unknown Title"
-                    val artist = if (artistCol >= 0) cursor.getString(artistCol) ?: "Unknown Artist" else "Unknown Artist"
-                    val album = if (albumCol >= 0) cursor.getString(albumCol) ?: "Unknown Album" else "Unknown Album"
-                    val duration = if (durationCol >= 0) cursor.getLong(durationCol) else 0L
-                    val size = if (sizeCol >= 0) cursor.getLong(sizeCol) else 0L
-                    val albumId = if (albumIdCol >= 0) cursor.getLong(albumIdCol) else 0L
-                    val dateAdded = if (dateAddedCol >= 0) cursor.getLong(dateAddedCol) * 1000L else 0L
-
-                    var folderName = "Music"
-                    var folderPath = ""
-
-                    if (bucketCol >= 0 && !cursor.isNull(bucketCol)) {
-                        folderName = cursor.getString(bucketCol) ?: "Music"
-                    } else if (relPathCol >= 0 && !cursor.isNull(relPathCol)) {
-                        val rel = cursor.getString(relPathCol) ?: ""
-                        val parts = rel.trim('/').split('/')
-                        folderName = parts.lastOrNull()?.ifBlank { "Music" } ?: "Music"
-                        folderPath = rel
-                    } else if (dataCol >= 0 && !cursor.isNull(dataCol)) {
-                        val path = cursor.getString(dataCol) ?: ""
-                        val parentFile = File(path).parentFile
-                        if (parentFile != null) {
-                            folderName = parentFile.name
-                            folderPath = parentFile.absolutePath
+                null,
+                null
+            )?.use { gCursor ->
+                val gIdCol = gCursor.getColumnIndex(MediaStore.Audio.Genres._ID)
+                val gNameCol = gCursor.getColumnIndex(MediaStore.Audio.Genres.NAME)
+                while (gCursor.moveToNext()) {
+                    if (gIdCol < 0 || gNameCol < 0) continue
+                    val genreId = gCursor.getLong(gIdCol)
+                    val genreName = gCursor.getString(gNameCol)?.trim().orEmpty()
+                    if (genreName.isBlank() || genreName.equals("<unknown>", ignoreCase = true)) continue
+                    runCatching {
+                        val membersUri = MediaStore.Audio.Genres.Members.getContentUri("external", genreId)
+                        resolver.query(
+                            membersUri,
+                            arrayOf(MediaStore.Audio.Genres.Members.AUDIO_ID),
+                            null,
+                            null,
+                            null
+                        )?.use { mCursor ->
+                            val aIdCol = mCursor.getColumnIndex(MediaStore.Audio.Genres.Members.AUDIO_ID)
+                            if (aIdCol >= 0) {
+                                while (mCursor.moveToNext()) {
+                                    val audioId = mCursor.getLong(aIdCol)
+                                    genreMap.putIfAbsent(audioId, genreName)
+                                }
+                            }
                         }
                     }
-
-                    if (folderPath.isBlank() && dataCol >= 0 && !cursor.isNull(dataCol)) {
-                        folderPath = File(cursor.getString(dataCol) ?: "").parentFile?.absolutePath ?: ""
-                    }
-
-                    val trackUri = ContentUris.withAppendedId(audioUri, id).toString()
-                    val albumArtUri = ContentUris.withAppendedId(
-                        Uri.parse("content://media/external/audio/albumart"),
-                        albumId
-                    ).toString()
-
-                    scannedAudio.add(
-                        AudioTrack(
-                            id = id.toString(),
-                            title = title,
-                            artist = artist,
-                            album = album,
-                            durationMs = duration,
-                            uri = trackUri,
-                            albumArtUri = albumArtUri,
-                            albumId = albumId,
-                            sizeBytes = size,
-                            folderName = folderName,
-                            folderPath = folderPath,
-                            dateAdded = dateAdded,
-                            isFavorite = false,
-                            playCount = 0
-                        )
-                    )
                 }
             }
-
-            // 2. Video MediaStore Query
-            val videoUri: Uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
-            } else {
-                MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-            }
-
-            val videoProjection = mutableListOf(
-                MediaStore.Video.Media._ID,
-                MediaStore.Video.Media.TITLE,
-                MediaStore.Video.Media.DURATION,
-                MediaStore.Video.Media.SIZE,
-                MediaStore.Video.Media.DATE_ADDED,
-                MediaStore.Video.Media.WIDTH,
-                MediaStore.Video.Media.HEIGHT
-            ).apply {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    add(MediaStore.Video.Media.RELATIVE_PATH)
-                    add(MediaStore.Video.Media.BUCKET_DISPLAY_NAME)
-                }
-                add(MediaStore.Video.Media.DATA)
-            }.toTypedArray()
-
-            val videoCursor: Cursor? = resolver.query(
-                videoUri,
-                videoProjection,
-                null,
-                null,
-                "${MediaStore.Video.Media.DATE_ADDED} DESC"
-            )
-
-            videoCursor?.use { cursor ->
-                val idCol = cursor.getColumnIndex(MediaStore.Video.Media._ID)
-                val titleCol = cursor.getColumnIndex(MediaStore.Video.Media.TITLE)
-                val durationCol = cursor.getColumnIndex(MediaStore.Video.Media.DURATION)
-                val sizeCol = cursor.getColumnIndex(MediaStore.Video.Media.SIZE)
-                val dateAddedCol = cursor.getColumnIndex(MediaStore.Video.Media.DATE_ADDED)
-                val widthCol = cursor.getColumnIndex(MediaStore.Video.Media.WIDTH)
-                val heightCol = cursor.getColumnIndex(MediaStore.Video.Media.HEIGHT)
-                val dataCol = cursor.getColumnIndex(MediaStore.Video.Media.DATA)
-                val relPathCol = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    cursor.getColumnIndex(MediaStore.Video.Media.RELATIVE_PATH)
-                } else -1
-                val bucketCol = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    cursor.getColumnIndex(MediaStore.Video.Media.BUCKET_DISPLAY_NAME)
-                } else -1
-
-                while (cursor.moveToNext()) {
-                    val id = cursor.getLong(idCol)
-                    val title = if (titleCol >= 0) cursor.getString(titleCol) ?: "Video $id" else "Video $id"
-                    val duration = if (durationCol >= 0) cursor.getLong(durationCol) else 0L
-                    val size = if (sizeCol >= 0) cursor.getLong(sizeCol) else 0L
-                    val dateAdded = if (dateAddedCol >= 0) cursor.getLong(dateAddedCol) * 1000L else 0L
-                    val width = if (widthCol >= 0) cursor.getInt(widthCol) else 0
-                    val height = if (heightCol >= 0) cursor.getInt(heightCol) else 0
-
-                    var folderName = "Videos"
-                    var folderPath = ""
-
-                    if (bucketCol >= 0 && !cursor.isNull(bucketCol)) {
-                        folderName = cursor.getString(bucketCol) ?: "Videos"
-                    } else if (relPathCol >= 0 && !cursor.isNull(relPathCol)) {
-                        val rel = cursor.getString(relPathCol) ?: ""
-                        val parts = rel.trim('/').split('/')
-                        folderName = parts.lastOrNull()?.ifBlank { "Videos" } ?: "Videos"
-                        folderPath = rel
-                    } else if (dataCol >= 0 && !cursor.isNull(dataCol)) {
-                        val path = cursor.getString(dataCol) ?: ""
-                        val parentFile = File(path).parentFile
-                        if (parentFile != null) {
-                            folderName = parentFile.name
-                            folderPath = parentFile.absolutePath
-                        }
-                    }
-
-                    if (folderPath.isBlank() && dataCol >= 0 && !cursor.isNull(dataCol)) {
-                        folderPath = File(cursor.getString(dataCol) ?: "").parentFile?.absolutePath ?: ""
-                    }
-
-                    val uri = ContentUris.withAppendedId(videoUri, id).toString()
-                    val resolution = when {
-                        width >= 3840 || height >= 2160 -> "4K"
-                        width >= 1920 || height >= 1080 -> "1080p"
-                        width >= 1280 || height >= 720 -> "720p"
-                        width >= 854 || height >= 480 -> "480p"
-                        width > 0 -> "${height}p"
-                        else -> "HD"
-                    }
-
-                    scannedVideos.add(
-                        VideoItem(
-                            id = id.toString(),
-                            title = title,
-                            durationMs = duration,
-                            uri = uri,
-                            thumbnailUri = uri,
-                            sizeBytes = size,
-                            resolution = resolution,
-                            width = width,
-                            height = height,
-                            folderName = folderName,
-                            folderPath = folderPath,
-                            dateAdded = dateAdded,
-                            isFavorite = false,
-                            playbackPositionMs = 0L,
-                            lastWatchedTimestamp = 0L
-                        )
-                    )
-                }
-            }
-
-            // Cleanup deleted / moved files safely in Room
-            val validSongIds = scannedAudio.map { it.id }
-            if (validSongIds.isNotEmpty()) {
-                dao.cleanupOrphanFavoriteSongs(validSongIds)
-                dao.cleanupOrphanPlaylistSongs(validSongIds)
-                dao.cleanupOrphanListeningHistory(validSongIds)
-            }
-
-            val validVideoIds = scannedVideos.map { it.id }
-            if (validVideoIds.isNotEmpty()) {
-                dao.cleanupOrphanFavoriteVideos(validVideoIds)
-            }
-
-        } catch (_: Exception) {}
-
-        _rawAudioTracks.value = scannedAudio
-        _allScannedVideos.value = scannedVideos
-
-        val totalAudioDuration = scannedAudio.sumOf { it.durationMs }
-        val totalSize = scannedAudio.sumOf { it.sizeBytes } + scannedVideos.sumOf { it.sizeBytes }
-
-        _storageStats.value = _storageStats.value.copy(
-            audioCount = scannedAudio.size,
-            videoCount = scannedVideos.size,
-            totalAudioDurationMs = totalAudioDuration,
-            totalStorageUsedBytes = totalSize,
-            isScanning = false
-        )
+        } catch (_: Exception) {
+            // Ignored on older or OEM MediaStore implementations restricting Genres cursor
+        }
+        return genreMap
     }
 
     // 1. Favorite Songs
@@ -790,6 +874,11 @@ class OfflineMediaRepository(
                 fadeOutEnabled = fadeOutEnabled
             )
         )
+    }
+
+    // 13. Persisted Player Settings
+    override suspend fun savePlayerSettings(entity: PlayerSettingsEntity) {
+        dao.savePlayerSettings(entity.copy(id = 1))
     }
 
     override suspend fun clearListeningHistory() {

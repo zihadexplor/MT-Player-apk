@@ -5,13 +5,10 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -45,10 +42,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.components.formatDuration
-import com.example.ui.theme.DarkSurface
-import com.example.ui.theme.SpotifyGreen
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
+import com.example.ui.theme.MonoFontFamily
+import com.example.ui.theme.StatusWarning
 import kotlin.math.abs
 
 @Composable
@@ -78,14 +73,14 @@ fun BrightnessHUD(
                 Icon(
                     imageVector = Icons.Default.BrightnessMedium,
                     contentDescription = "Brightness",
-                    tint = SpotifyGreen,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(32.dp)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "$percentage%",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = TextPrimary,
+                    style = MaterialTheme.typography.titleMedium.copy(fontFamily = MonoFontFamily),
+                    color = Color.White,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -95,7 +90,7 @@ fun BrightnessHUD(
                         .width(90.dp)
                         .height(6.dp)
                         .clip(RoundedCornerShape(3.dp)),
-                    color = SpotifyGreen,
+                    color = MaterialTheme.colorScheme.primary,
                     trackColor = Color.White.copy(alpha = 0.25f),
                 )
             }
@@ -146,7 +141,7 @@ fun VolumeHUD(
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "$percentage%",
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleMedium.copy(fontFamily = MonoFontFamily),
                     color = Color.White,
                     fontWeight = FontWeight.Bold
                 )
@@ -184,6 +179,7 @@ fun ScrubSeekHUD(
         val progress = (targetTimeMs.toFloat() / safeDur.toFloat()).coerceIn(0f, 1f)
         val deltaSign = if (isForward) "+" else "-"
         val formattedDelta = "$deltaSign${formatDuration(abs(deltaMs))}"
+        val tint = if (isForward) MaterialTheme.colorScheme.primary else StatusWarning
 
         Surface(
             shape = RoundedCornerShape(18.dp),
@@ -200,22 +196,22 @@ fun ScrubSeekHUD(
                     Icon(
                         imageVector = if (isForward) Icons.Default.FastForward else Icons.Default.FastRewind,
                         contentDescription = if (isForward) "Forward" else "Rewind",
-                        tint = if (isForward) SpotifyGreen else Color(0xFFFF9800),
+                        tint = tint,
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "[$formattedDelta]",
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleMedium.copy(fontFamily = MonoFontFamily),
                         fontWeight = FontWeight.Bold,
-                        color = if (isForward) SpotifyGreen else Color(0xFFFF9800)
+                        color = tint
                     )
                 }
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = "${formatDuration(targetTimeMs)} / ${formatDuration(durationMs)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextPrimary,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontFamily = MonoFontFamily),
+                    color = Color.White,
                     fontWeight = FontWeight.SemiBold
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -225,7 +221,7 @@ fun ScrubSeekHUD(
                         .width(130.dp)
                         .height(6.dp)
                         .clip(RoundedCornerShape(3.dp)),
-                    color = SpotifyGreen,
+                    color = MaterialTheme.colorScheme.primary,
                     trackColor = Color.White.copy(alpha = 0.25f),
                 )
             }
@@ -237,8 +233,10 @@ fun ScrubSeekHUD(
 fun DoubleTapFeedback(
     isForward: Boolean,
     isVisible: Boolean,
+    seekSeconds: Int = 10,
     modifier: Modifier = Modifier
 ) {
+    val label = if (isForward) "+${seekSeconds}s" else "-${seekSeconds}s"
     AnimatedVisibility(
         visible = isVisible,
         enter = fadeIn() + scaleIn(initialScale = 0.7f),
@@ -247,7 +245,7 @@ fun DoubleTapFeedback(
     ) {
         Surface(
             shape = CircleShape,
-            color = Color.Black.copy(alpha = 0.70f),
+            color = Color.Black.copy(alpha = 0.72f),
             modifier = Modifier
                 .size(76.dp)
                 .testTag(if (isForward) "double_tap_forward_hud" else "double_tap_rewind_hud")
@@ -259,14 +257,14 @@ fun DoubleTapFeedback(
             ) {
                 Icon(
                     imageVector = if (isForward) Icons.Default.FastForward else Icons.Default.FastRewind,
-                    contentDescription = if (isForward) "+10s" else "-10s",
-                    tint = SpotifyGreen,
+                    contentDescription = label,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(30.dp)
                 )
                 Text(
-                    text = if (isForward) "+10s" else "-10s",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = TextPrimary,
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = MonoFontFamily),
+                    color = Color.White,
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.sp
                 )
@@ -296,7 +294,7 @@ fun ToastHUD(
             Text(
                 text = message,
                 style = MaterialTheme.typography.bodyMedium,
-                color = TextPrimary,
+                color = Color.White,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
             )
@@ -313,7 +311,7 @@ fun ResumePill(
 ) {
     Surface(
         shape = RoundedCornerShape(20.dp),
-        color = DarkSurface.copy(alpha = 0.92f),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.95f),
         tonalElevation = 8.dp,
         modifier = modifier.testTag("video_resume_pill")
     ) {
@@ -324,13 +322,13 @@ fun ResumePill(
             Text(
                 text = "Resumed at ${formatDuration(playbackPositionMs)}",
                 style = MaterialTheme.typography.bodySmall,
-                color = TextPrimary,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Medium
             )
             Spacer(modifier = Modifier.width(6.dp))
             TextButton(
                 onClick = onRestart,
-                colors = ButtonDefaults.textButtonColors(contentColor = SpotifyGreen),
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary),
                 modifier = Modifier.height(32.dp)
             ) {
                 Icon(
@@ -352,7 +350,7 @@ fun ResumePill(
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Dismiss resume notice",
-                    tint = TextSecondary,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(16.dp)
                 )
             }
