@@ -114,7 +114,7 @@ adb shell cmd uimode night yes >/dev/null 2>&1 || true
 sleep 3; dump night
 adb shell cmd uimode night no >/dev/null 2>&1 || true
 sleep 3; dump day
-log "theme screenshots captured (night.png / day.png)"
+log "theme screenshots captured (night.png / day.png); system reports: $(adb shell cmd uimode night 2>/dev/null | tr -d '\r')"
 
 adb logcat -d > "$OUT/logcat.txt" || true
 # App crashes ("FATAL EXCEPTION" followed by "Process: <pkg>") or ANRs of the app, in either window.

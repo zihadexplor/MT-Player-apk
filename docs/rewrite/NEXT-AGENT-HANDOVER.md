@@ -38,10 +38,10 @@ or usage limit. Read it first, then `docs/rewrite/00-phase0-audit.md`, `02-archi
 | 0 | Audit, environment, executable wrapper | Done (`f2a08de`) |
 | 1 | Research, architecture, feature inventory, ADRs 001–011 | Done (`c641d5f`) |
 | 2 | Full rebuild: design system, data, DB + legacy import, playback, updater, shell, all screens, video player, logo, unit tests | Done (`bf96544`, report `04-phase2-report.md`) |
-| 3 | Emulator CI (API 29/34/35): instrumentation tests (UI, MediaSession/notification, PiP, resume), shell checks (permission gate, UI playback via taps, process-death queue restore, theme screenshots, logcat), install-over-v1.3.0 release-signed data migration | In progress: update-compat job green; emulator jobs found a real crash (UPSERT on API 29) fixed in `86281f1`, re-running |
-| 4 | Review and fix pass per feature from emulator evidence (music, video, library, settings, TV/rail layout) | Planned |
-| 5 | Hardening: lint clean + blocking (done), StrictMode log-only in debug (done), memory/ANR review, low-RAM paths | In progress |
-| 6 | Docs (README done, OWNER-MANUAL-TESTS done, phase reports), PR `rewrite/v2 -> main`, CI green, merge | Planned |
+| 3 | Emulator CI (API 29/34/35) + install-over-v1.3.0 release-signed migration test | Done: all jobs green on `7eaae21` (run 43732219946), report `05-phase3-report.md` |
+| 4 | Review and fix pass per feature from emulator evidence | Done (UPSERT crash, PiP state, theme/permission/queue evidence), report `06-phase4-5-report.md` |
+| 5 | Hardening: lint 0 errors + blocking, StrictMode debug, main-thread I/O, backup rules | Done, report `06-phase4-5-report.md` |
+| 6 | PR `rewrite/v2 -> main`, CI green on PR, merge (triggers signed v2.0.0 release) | In progress |
 
 The phase table was re-scoped after Phase 1: screens originally split across phases 3–6 were
 built together in Phase 2 because they share one design system and navigation shell.
@@ -73,15 +73,14 @@ pass locally.
 
 ## Exact next steps
 
-1. Check the latest CI run: `gh run list --branch rewrite/v2 --limit 3`, then
-   `gh run view <id> --json jobs -q '.jobs[] | "\(.name) \(.status) \(.conclusion)"'`.
-   On failure: `gh run view <id> --log-failed`, and `gh run download <id> -n emulator-evidence-api<N>`
-   (summary.txt, screenshots, uiautomator XML, dumpsys media_session/notification, logcat,
-   instrumentation results). Fix and push. A non-`[skip ci]` push cancels the running CI.
-2. When all CI jobs are green, write `docs/rewrite/05-phase3-report.md` with the evidence.
-3. Phase 4 review pass, Phase 5 memory/ANR review, Phase 6 PR + merge.
+1. Open (or find) the PR `rewrite/v2 -> main`: `gh pr list --head rewrite/v2`.
+2. Wait for the PR's CI (`gh pr checks <n>`); fix anything red.
+3. Merge with a merge commit (no `[skip ci]` in the message, or release.yml is skipped).
+4. Watch `release.yml` on main; confirm release v2.0.0 with `release-MT-Player-v2.0.0.apk` and
+   SHA256SUMS.txt exists (`gh release view v2.0.0`).
+5. Report to the owner; owner actions: delete `MT_UPDATER_TOKEN` secret, run OWNER-MANUAL-TESTS.
 
-## CI findings so far (Phase 3)
+## CI findings (Phase 3, resolved)
 
 - Run 43726937809: failed in build only because Maven Central returned HTTP 429 (transient).
 - Run 43727256725: build/unit/lint green; **update-compat green** (v1.3.0 → 2.0.0 release-signed
