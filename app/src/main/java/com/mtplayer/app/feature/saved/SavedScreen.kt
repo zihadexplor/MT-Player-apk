@@ -118,11 +118,13 @@ private fun SongCollection(songs: List<Song>, icon: androidx.compose.ui.graphics
     if (songs.isEmpty()) {
         MessageState(icon, stringResource(title), stringResource(body)); return
     }
+    val playing = rememberPlaying()
+    val favIds = favoriteSongIds()
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 16.dp)) {
         item(key = "head") {
             PlayShuffleRow(songs)
             CountLine(pluralStringResource(R.plurals.song_count, songs.size, songs.size))
         }
-        songItems(songs, rememberPlaying(), favoriteSongIds(), onPlay = { player.playSongs(songs, it) }, onMore = { actions.openSong(it) })
+        songItems(songs, playing, favIds, onPlay = { player.playSongs(songs, it) }, onMore = { actions.openSong(it) })
     }
 }

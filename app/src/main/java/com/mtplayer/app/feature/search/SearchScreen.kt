@@ -106,13 +106,15 @@ fun SearchScreen() {
                 modifier = Modifier.weight(1f).focusRequester(focus),
             )
         }
+        val playing = rememberPlaying()
+        val favIds = favoriteSongIds()
         when {
             query.isBlank() -> MessageState(Icons.Rounded.Search, stringResource(R.string.search_idle_title), stringResource(R.string.search_idle_body))
             results.isEmpty -> MessageState(Icons.Rounded.SearchOff, stringResource(R.string.search_none_title), stringResource(R.string.search_none_body, query))
             else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 16.dp)) {
                 if (results.songs.isNotEmpty()) {
                     item(key = "sh") { SectionHeader(stringResource(R.string.tab_songs)) }
-                    songItems(results.songs, rememberPlaying(), favoriteSongIds(),
+                    songItems(results.songs, playing, favIds,
                         onPlay = { player.playSongs(results.songs, it) }, onMore = { actions.openSong(it) })
                 }
                 if (results.artists.isNotEmpty()) {

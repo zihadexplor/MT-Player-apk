@@ -1,5 +1,6 @@
 package com.mtplayer.app.feature.music
 
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -64,6 +65,7 @@ private enum class MusicTab(val label: Int) {
     PLAYLISTS(R.string.tab_playlists), GENRES(R.string.tab_genres), FOLDERS(R.string.tab_folders),
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MusicScreen() {
     val tabs = MusicTab.entries
@@ -149,12 +151,14 @@ private fun SongsTab(index: LibraryIndex, sort: SongSort) {
         MessageState(Icons.Rounded.MusicNote, stringResource(R.string.no_songs_title), stringResource(R.string.no_songs_body))
         return
     }
+    val playing = rememberPlaying()
+    val favIds = favoriteSongIds()
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 16.dp)) {
         item(key = "head") {
             PlayShuffleRow(songs)
             CountLine(pluralStringResource(R.plurals.song_count, songs.size, songs.size))
         }
-        songItems(songs, rememberPlaying(), favoriteSongIds(), onPlay = { player.playSongs(songs, it) }, onMore = { actions.openSong(it) })
+        songItems(songs, playing, favIds, onPlay = { player.playSongs(songs, it) }, onMore = { actions.openSong(it) })
     }
 }
 

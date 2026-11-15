@@ -227,17 +227,17 @@ fun HiddenFoldersScreen() {
             return@Column
         }
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 8.dp)) {
-            items(hidden, key = { it.type + it.path }) { h ->
+            items(hidden, key = { it.mediaType + it.path }) { h ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     MediaRow(
                         title = h.path.substringAfterLast('/').ifBlank { h.path },
-                        subtitle = stringResource(if (h.type == MediaType.VIDEO) R.string.tab_videos else R.string.tab_music) + " · " + h.path,
+                        subtitle = stringResource(if (h.mediaType == MediaType.VIDEO) R.string.tab_videos else R.string.tab_music) + " · " + h.path,
                         artwork = null,
                         fallbackIcon = Icons.Rounded.Folder,
                         onClick = {},
                         modifier = Modifier.weight(1f),
                     )
-                    TextButton(onClick = { vm.unhideFolder(h.path, h.type) }, modifier = Modifier.padding(end = 8.dp).heightIn(min = 48.dp)) {
+                    TextButton(onClick = { vm.unhideFolder(h.path, h.mediaType) }, modifier = Modifier.padding(end = 8.dp).heightIn(min = 48.dp)) {
                         Text(stringResource(R.string.unhide))
                     }
                 }

@@ -100,6 +100,7 @@ fun MediaActionsHost(state: MediaActionsState) {
 
     state.song?.let { song ->
         val fav = song.id in favSongs
+        val info = songInfo(song)
         ActionSheet(
             title = song.title,
             subtitle = "${song.artist} · ${song.album}",
@@ -120,7 +121,7 @@ fun MediaActionsHost(state: MediaActionsState) {
                 SheetAction(Icons.Rounded.Person, stringResource(R.string.go_to_artist)) { nav.artist(song.artist) },
                 SheetAction(Icons.Rounded.Folder, stringResource(R.string.go_to_folder)) { nav.folder(song.folderPath) },
                 SheetAction(Icons.Rounded.Info, stringResource(R.string.details)) {
-                    state.info = song.title to songInfo(song)
+                    state.info = song.title to info
                 },
             ) + state.songExtras,
         )
@@ -128,6 +129,7 @@ fun MediaActionsHost(state: MediaActionsState) {
 
     state.video?.let { video ->
         val fav = video.id in favVideos
+        val vInfo = videoInfo(video)
         ActionSheet(
             title = video.title,
             subtitle = "${video.folderName} · ${Format.duration(video.durationMs)}",
@@ -146,7 +148,7 @@ fun MediaActionsHost(state: MediaActionsState) {
                     vm.hideFolder(video.folderPath, MediaType.VIDEO)
                     messenger.show(folderHidden, undo) { vm.unhideFolder(video.folderPath, MediaType.VIDEO) }
                 },
-                SheetAction(Icons.Rounded.Info, stringResource(R.string.details)) { state.info = video.title to videoInfo(video) },
+                SheetAction(Icons.Rounded.Info, stringResource(R.string.details)) { state.info = video.title to vInfo },
             ),
         )
     }
