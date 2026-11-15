@@ -1,7 +1,10 @@
 package com.mtplayer.app
 
 import android.app.NotificationManager
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
@@ -26,6 +29,8 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.MethodSorters
+import kotlinx.coroutines.runBlocking
+import com.mtplayer.app.designsystem.theme.ThemeMode
 
 /**
  * End-to-end UI checks on the real app. Tests that need media use files that CI pushes to
@@ -55,11 +60,17 @@ class AppUiTest {
         }
         rule.onAllNodesWithContentDescription(s(R.string.settings)).onFirst().performClick()
         rule.waitUntilAtLeastOneExists(hasText(s(R.string.theme)), 5_000)
-        for (mode in listOf(R.string.theme_light, R.string.theme_dark, R.string.theme_system)) {
-            rule.onNodeWithText(s(R.string.theme)).performClick()
-            rule.waitUntilAtLeastOneExists(hasText(s(mode)), 5_000)
-            rule.onAllNodesWithText(s(mode)).onFirst().performClick()
-            rule.waitForIdle()
+        val radio = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.RadioButton)
+        for ((mode, expected) in listOf(
+            R.string.theme_light to ThemeMode.LIGHT,
+            R.string.theme_dark to ThemeMode.DARK,
+            R.string.theme_system to ThemeMode.SYSTEM,
+        )) {
+            rule.onAllNodesWithText(s(R.string.theme)).onFirst().performClick()
+            rule.waitUntilAtLeastOneExists(hasText(s(mode)) and radio, 5_000)
+            rule.onNode(hasText(s(mode)) and radio).performClick()
+            rule.waitUntil(5_000) { runBlocking { app.container.settings.current().themeMode } == expected }
+            rule.waitUntil(5_000) { rule.onAllNodes(radio).fetchSemanticsNodes().isEmpty() }
         }
         rule.onNodeWithContentDescription(s(R.string.back)).performClick()
         rule.onAllNodesWithContentDescription(s(R.string.search)).onFirst().performClick()
