@@ -12,7 +12,7 @@ or usage limit. Read it first, then `docs/rewrite/00-phase0-audit.md`, `02-archi
   (`.github/release-signing-cert.sha256`), and user data (favourites, playlists, history).
 - Never expose credentials. Signing secrets live only in GitHub secrets
   (`MT_KEYSTORE_BASE64`, `MT_KEYSTORE_PASSWORD`, `MT_KEY_ALIAS`, `MT_KEY_PASSWORD`).
-  `MT_UPDATER_TOKEN` is obsolete and must be removed from `release.yml`.
+  `MT_UPDATER_TOKEN` is obsolete; release.yml no longer references it.
 - Work on branch `rewrite/v2`. Commit and push after every meaningful change. Do not wait for
   owner approval between phases. At the end: open PR `rewrite/v2 -> main`, CI green, merge
   (merging to `main` triggers the signed release via `release.yml`).
@@ -37,11 +37,11 @@ or usage limit. Read it first, then `docs/rewrite/00-phase0-audit.md`, `02-archi
 |---|---|---|
 | 0 | Audit, environment, executable wrapper | Done (`f2a08de`) |
 | 1 | Research, architecture, feature inventory, ADRs 001–011 | Done (`c641d5f`) |
-| 2 | Full rebuild: design system, data, DB + legacy import, playback, updater, shell, all screens, video player, logo, unit tests | Code complete, compiles, 25 unit tests pass locally and in CI (`bf96544`, run 43725855199 green) |
-| 3 | Emulator CI: instrumentation tests (UI smoke, playback + MediaSession/notification, process death, PiP, permissions), install-over-v1.3.0 data migration test | Next |
+| 2 | Full rebuild: design system, data, DB + legacy import, playback, updater, shell, all screens, video player, logo, unit tests | Done (`bf96544`, report `04-phase2-report.md`) |
+| 3 | Emulator CI (API 29/34/35): instrumentation tests (UI, MediaSession/notification, PiP, resume), shell checks (permission gate, UI playback via taps, process-death queue restore, theme screenshots, logcat), install-over-v1.3.0 release-signed data migration | In progress: update-compat job green; emulator jobs found a real crash (UPSERT on API 29) fixed in `86281f1`, re-running |
 | 4 | Review and fix pass per feature from emulator evidence (music, video, library, settings, TV/rail layout) | Planned |
-| 5 | Hardening: R8 release build + keep rules, lint clean, StrictMode in debug, memory/ANR review, low-RAM paths | Planned |
-| 6 | Docs (README, OWNER-MANUAL-TESTS, phase reports), remove `MT_UPDATER_TOKEN` from release.yml, PR `rewrite/v2 -> main`, CI green, merge | Planned |
+| 5 | Hardening: lint clean + blocking (done), StrictMode log-only in debug (done), memory/ANR review, low-RAM paths | In progress |
+| 6 | Docs (README done, OWNER-MANUAL-TESTS done, phase reports), PR `rewrite/v2 -> main`, CI green, merge | Planned |
 
 The phase table was re-scoped after Phase 1: screens originally split across phases 3–6 were
 built together in Phase 2 because they share one design system and navigation shell.
@@ -73,24 +73,30 @@ pass locally.
 
 ## Exact next steps
 
-1. Confirm CI run for `bf96544` is green (`gh run list --branch rewrite/v2 --limit 3`). Fix if not.
-2. Write `docs/rewrite/04-phase2-report.md` (investigated / rebuilt / files+commits / tests / remaining / next).
-3. Phase 3: add `app/src/androidTest` (Compose UI smoke: launch, tabs, permission gate, settings theme
-   switch; MediaController test: service starts, metadata, notification posted via
-   NotificationManager.activeNotifications; Room in-device test) and a CI job
-   `emulator` using `reactivecircus/android-emulator-runner@v2` (API 29 + 34 + 35, x86_64, KVM enabled
-   via udev rule), plus an install-over-v1.3.0 job: download the v1.3.0 release APK, install, seed
-   data is not possible without root, so verify `adb install -r` of the new debug-signed build is
-   rejected only by signature (release signing is verified in release.yml) and that a debug build
-   imports a pushed synthetic `melody_player_local.db` via `run-as`.
-4. Phases 4–6 per the table.
+1. Check the latest CI run: `gh run list --branch rewrite/v2 --limit 3`, then
+   `gh run view <id> --json jobs -q '.jobs[] | "\(.name) \(.status) \(.conclusion)"'`.
+   On failure: `gh run view <id> --log-failed`, and `gh run download <id> -n emulator-evidence-api<N>`
+   (summary.txt, screenshots, uiautomator XML, dumpsys media_session/notification, logcat,
+   instrumentation results). Fix and push. A non-`[skip ci]` push cancels the running CI.
+2. When all CI jobs are green, write `docs/rewrite/05-phase3-report.md` with the evidence.
+3. Phase 4 review pass, Phase 5 memory/ANR review, Phase 6 PR + merge.
 
-## Known issues / risks
+## CI findings so far (Phase 3)
 
-- Not yet verified on any emulator or device; everything beyond unit tests is unverified.
-- `Settings.artworkTint` and `gapless` are imported from v1 but not shown in UI (ExoPlayer is
-  gapless by default; no misleading toggle).
-- Lint runs with `continue-on-error` in CI; must be reviewed in Phase 5.
+- Run 43726937809: failed in build only because Maven Central returned HTTP 429 (transient).
+- Run 43727256725: build/unit/lint green; **update-compat green** (v1.3.0 → 2.0.0 release-signed
+  `adb install -r`, v1 favourites/playlists/progress imported, v1 DB untouched, idempotent).
+  Emulator jobs failed:
+  - API 29: `INSERT ... ON CONFLICT DO UPDATE` unsupported by SQLite 3.22 (Android 9/10) → crash
+    on every play. Fixed: insert-or-ignore + update in a transaction; history is best-effort.
+  - `PlaybackSessionTest` line 88 asserted `COMMAND_SEEK_TO_NEXT_MEDIA_ITEM` on the last item (test
+    bug). Notification checks before it (title, ≥3 actions, MediaStyle session, update on track
+    change, stays while paused) passed on API 29 and 35.
+  - API 35: PiP entered, `ui.inPip` asserted before `onPictureInPictureModeChanged` (race in test).
+  - API 34: "Pixel Launcher isn't responding" system dialog covered the permission gate; the script
+    now dismisses foreign ANR dialogs with "Wait" (screenshot kept as `*-system-anr-dialog.png`).
+  - API 35 shell checks passed: session PLAYING with metadata, notification posted, queue restored
+    after force-stop, no crash/ANR in logcat.
 
 ## Latest commit
 
