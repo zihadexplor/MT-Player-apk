@@ -96,7 +96,7 @@ fun MediaRow(
     artwork: Any?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    fallbackIcon: ImageVector = androidx.compose.material.icons.Icons.Rounded.MoreVert,
+    fallbackIcon: ImageVector = Icons.Rounded.MusicNote,
     artworkShape: androidx.compose.ui.graphics.Shape = MaterialTheme.shapes.small,
     active: Boolean = false,
     playing: Boolean = false,

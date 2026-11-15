@@ -32,13 +32,17 @@ data class PlaylistSummary(
     val createdAt: Long,
     val updatedAt: Long,
     val itemCount: Int,
-)
+    val firstSongId: Long?,
+) {
+    val songCount: Int get() = itemCount
+}
 
 @Dao
 interface PlaylistDao {
     @Query(
         """SELECT p.id, p.name, p.created_at AS createdAt, p.updated_at AS updatedAt,
-           (SELECT COUNT(*) FROM playlist_items i WHERE i.playlist_id = p.id) AS itemCount
+           (SELECT COUNT(*) FROM playlist_items i WHERE i.playlist_id = p.id) AS itemCount,
+           (SELECT i.song_id FROM playlist_items i WHERE i.playlist_id = p.id ORDER BY i.position LIMIT 1) AS firstSongId
            FROM playlists p ORDER BY p.updated_at DESC"""
     )
     fun observeSummaries(): Flow<List<PlaylistSummary>>
