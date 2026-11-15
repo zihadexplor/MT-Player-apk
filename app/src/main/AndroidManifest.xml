@@ -14,6 +14,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Equalizer, bass boost and virtualizer on the playback audio session -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
     <!-- Opt-in updater only: public GitHub Releases API, no credentials -->
     <uses-permission android:name="android.permission.INTERNET" />

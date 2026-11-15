@@ -270,7 +270,9 @@ private fun PermissionRequest(onGranted: () -> Unit) {
                     Intent(AndroidSettings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
                 )
             } else {
-                launcher.launch(Permissions.media)
+                // Media access gates the library; notifications are optional (media controls are
+                // exempt on Android 13+, but asking keeps them visible on every OEM build).
+                launcher.launch(Permissions.media + listOfNotNull(Permissions.notifications))
             }
         },
     )
