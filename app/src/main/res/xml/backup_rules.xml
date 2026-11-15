@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Auto Backup rules for Android 9 – 11. Updater state is device-specific and never backed up. -->
+<!-- Android 9-11 backup: only favourites, playlists, history (Room) and settings (DataStore). -->
 <full-backup-content>
-    <exclude domain="sharedpref" path="mt_updater.xml" />
+    <include domain="database" path="mtplayer.db" />
+    <include domain="database" path="mtplayer.db-wal" />
+    <include domain="file" path="datastore/settings.preferences_pb" />
 </full-backup-content>

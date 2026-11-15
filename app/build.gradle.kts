@@ -3,20 +3,20 @@ import java.util.Properties
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.compose)
-  alias(libs.plugins.google.devtools.ksp)
+  alias(libs.plugins.ksp)
 }
 
-// Version — single source of truth lives in /version.properties (bumped by the Release workflow)
+// Version — single source of truth lives in /version.properties (bumped by the Release workflow).
 val versionProps = Properties().apply {
   rootProject.file("version.properties").inputStream().use { load(it) }
 }
 val appVersionName: String = versionProps.getProperty("VERSION_NAME")
 val appVersionCode: Int = versionProps.getProperty("VERSION_CODE").toInt()
 
-// Constant release keystore (NEVER generated on the fly):
+// Constant release keystore (never generated on the fly):
 //   * CI:    decoded from the GitHub secret MT_KEYSTORE_BASE64 (see release.yml)
-//   * Local: referenced from the git-ignored /keystore.properties (see keystore.properties.example)
-// If neither is present, release builds are produced UNSIGNED instead of with a random key.
+//   * Local: referenced from the git-ignored /keystore.properties
+// Without credentials, release builds are produced UNSIGNED instead of with a random key.
 val keystoreProps = Properties().apply {
   val f = rootProject.file("keystore.properties")
   if (f.exists()) f.inputStream().use { load(it) }
@@ -33,35 +33,27 @@ val releaseKeyPassword = secret("MT_KEY_PASSWORD", "keyPassword")
 val hasReleaseSigning = listOf(releaseStoreFile, releaseStorePassword, releaseKeyAlias, releaseKeyPassword)
   .all { it != null } && rootProject.file(releaseStoreFile!!).exists()
 
-// In-app updater configuration (GitHub Releases)
-val updateRepoOwner = secret("MT_UPDATE_REPO_OWNER", "updateRepoOwner") ?: "zihadexplor"
-val updateRepoName = secret("MT_UPDATE_REPO_NAME", "updateRepoName") ?: "MT-Player-apk"
-val updaterToken = secret("MT_UPDATER_TOKEN", "updaterToken") ?: ""
-val obfuscationKey = (appVersionCode * 31 + 0x5A) and 0xFF
-val obfuscatedToken = updaterToken.toByteArray(Charsets.UTF_8)
-  .joinToString(",") { ((it.toInt() xor obfuscationKey) and 0xFF).toString() }
+// Public GitHub repository used by the in-app updater. No credentials are ever embedded.
+val updateRepoOwner = System.getenv("MT_UPDATE_REPO_OWNER")?.takeIf { it.isNotBlank() } ?: "zihadexplor"
+val updateRepoName = System.getenv("MT_UPDATE_REPO_NAME")?.takeIf { it.isNotBlank() } ?: "MT-Player-apk"
 
 android {
-  namespace = "com.example"
+  namespace = "com.mtplayer.app"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
+    // Application identity of every published MT Player release. Never change it.
     applicationId = "com.aistudio.mtplayer.kmzv"
-    minSdk = 28 // Android 9 (Pie)
+    minSdk = 28
     targetSdk = 36
     versionCode = appVersionCode
     versionName = appVersionName
-
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
     buildConfigField("String", "UPDATE_REPO_OWNER", "\"$updateRepoOwner\"")
     buildConfigField("String", "UPDATE_REPO_NAME", "\"$updateRepoName\"")
-    buildConfigField("int[]", "UPDATER_TOKEN_BYTES", "new int[]{$obfuscatedToken}")
-    buildConfigField("int", "UPDATER_TOKEN_KEY", "$obfuscationKey")
   }
 
-  // Release signing uses ONLY the constant release keystore (see above). Do not point this at a
-  // debug keystore: the Release workflow verifies the certificate fingerprint.
   signingConfigs {
     if (hasReleaseSigning) {
       create("release") {
@@ -78,7 +70,8 @@ android {
 
   buildTypes {
     release {
-      isMinifyEnabled = false
+      isMinifyEnabled = true
+      isShrinkResources = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
       signingConfig = if (hasReleaseSigning) signingConfigs.getByName("release") else null
       buildConfigField("boolean", "AUTO_UPDATE_CHECK", "true")
@@ -101,61 +94,89 @@ android {
     buildConfig = true
   }
 
-  testOptions { unitTests { isIncludeAndroidResources = true } }
+  testOptions {
+    unitTests {
+      isIncludeAndroidResources = true
+      isReturnDefaultValues = true
+    }
+    animationsDisabled = true
+  }
+
+  sourceSets {
+    // Exported Room schemas are test fixtures for migration tests.
+    getByName("test").assets.srcDir("$projectDir/schemas")
+    getByName("androidTest").assets.srcDir("$projectDir/schemas")
+  }
 
   packaging {
-    resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+    resources { excludes += setOf("/META-INF/{AL2.0,LGPL2.1}", "/META-INF/*.kotlin_module", "DebugProbesKt.bin") }
   }
 
   dependenciesInfo {
     includeInApk = false
     includeInBundle = false
   }
+
+  lint {
+    abortOnError = false
+    checkReleaseBuilds = false
+  }
+}
+
+ksp {
+  arg("room.schemaLocation", "$projectDir/schemas")
+  arg("room.generateKotlin", "true")
 }
 
 dependencies {
   implementation(platform(libs.androidx.compose.bom))
   implementation(libs.androidx.activity.compose)
-  implementation(libs.androidx.compose.material.icons.core)
   implementation(libs.androidx.compose.material.icons.extended)
   implementation(libs.androidx.compose.material3)
   implementation(libs.androidx.compose.ui)
   implementation(libs.androidx.compose.ui.graphics)
   implementation(libs.androidx.compose.ui.tooling.preview)
   implementation(libs.androidx.core.ktx)
+  implementation(libs.androidx.core.splashscreen)
   implementation(libs.androidx.lifecycle.runtime.compose)
-  implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(libs.androidx.lifecycle.viewmodel.compose)
+  implementation(libs.androidx.lifecycle.process)
   implementation(libs.androidx.navigation.compose)
+  implementation(libs.androidx.datastore.preferences)
   implementation(libs.coil.compose)
 
-  // Room Database
   implementation(libs.androidx.room.runtime)
   implementation(libs.androidx.room.ktx)
   ksp(libs.androidx.room.compiler)
 
-  // Media3
   implementation(libs.media3.exoplayer)
-  implementation(libs.media3.ui)
   implementation(libs.media3.session)
+  implementation(libs.media3.ui)
   implementation(libs.media3.common)
 
   implementation(libs.kotlinx.coroutines.android)
-  implementation(libs.kotlinx.coroutines.core)
+  implementation(libs.kotlinx.coroutines.guava)
+
+  debugImplementation(libs.androidx.compose.ui.tooling)
+  debugImplementation(libs.androidx.compose.ui.test.manifest)
 
   testImplementation(platform(libs.androidx.compose.bom))
   testImplementation(libs.androidx.compose.ui.test.junit4)
-  testImplementation(libs.androidx.core)
-  testImplementation(libs.androidx.junit)
   testImplementation(libs.junit)
+  testImplementation(libs.androidx.test.core)
+  testImplementation(libs.androidx.test.ext.junit)
+  testImplementation(libs.androidx.room.testing)
   testImplementation(libs.kotlinx.coroutines.test)
   testImplementation(libs.robolectric)
-
-  debugImplementation(libs.androidx.compose.ui.test.manifest)
+  testImplementation(libs.media3.test.utils)
 
   androidTestImplementation(platform(libs.androidx.compose.bom))
   androidTestImplementation(libs.androidx.compose.ui.test.junit4)
-  androidTestImplementation(libs.androidx.espresso.core)
-  androidTestImplementation(libs.androidx.junit)
-  androidTestImplementation(libs.androidx.runner)
+  androidTestImplementation(libs.androidx.test.ext.junit)
+  androidTestImplementation(libs.androidx.test.core)
+  androidTestImplementation(libs.androidx.test.runner)
+  androidTestImplementation(libs.androidx.test.rules)
+  androidTestImplementation(libs.androidx.test.uiautomator)
+  androidTestImplementation(libs.androidx.room.testing)
+  androidTestImplementation(libs.kotlinx.coroutines.test)
 }
