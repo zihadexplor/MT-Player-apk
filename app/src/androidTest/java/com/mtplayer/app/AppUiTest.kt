@@ -31,6 +31,7 @@ import org.junit.runner.RunWith
 import org.junit.runners.MethodSorters
 import kotlinx.coroutines.runBlocking
 import com.mtplayer.app.designsystem.theme.ThemeMode
+import com.mtplayer.app.data.prefs.VideoLayout
 
 /**
  * End-to-end UI checks on the real app. Tests that need media use files that CI pushes to
@@ -123,6 +124,33 @@ class AppUiTest {
         rule.waitUntilAtLeastOneExists(hasText(s(R.string.playback_stopped)), 5_000)
         rule.waitUntilDoesNotExist(hasContentDescription(s(R.string.close_player)), 5_000)
         assertTrue(TestSupport.waitUntil(5_000) { !app.container.player.state.value.isPlaying })
+    }
+
+    @Test fun c_videosGridListFavouriteAndFolders() {
+        assumeTrue("CI media not present", TestSupport.mediaStoreHas(CLIP, video = true))
+        rule.onAllNodesWithText(s(R.string.tab_videos)).onFirst().performClick()
+        rule.waitUntilAtLeastOneExists(hasText(CLIP), 20_000)
+        val settings = app.container.settings
+        val before = runBlocking { settings.current().videoLayout }
+        // Toggle layout twice: the clip must stay visible in both grid and list form.
+        repeat(2) {
+            val toList = runBlocking { settings.current().videoLayout } == VideoLayout.GRID
+            rule.onNodeWithContentDescription(s(if (toList) R.string.show_as_list else R.string.show_as_grid)).performClick()
+            val want = if (toList) VideoLayout.LIST else VideoLayout.GRID
+            rule.waitUntil(5_000) { runBlocking { settings.current().videoLayout } == want }
+            rule.waitUntilAtLeastOneExists(hasText(CLIP), 5_000)
+        }
+        assertEquals(before, runBlocking { settings.current().videoLayout })
+
+        // Favourite from the video menu, then it is listed under Saved > favourite videos.
+        rule.onAllNodesWithContentDescription(s(R.string.more_options_for, CLIP)).onFirst().performClick()
+        rule.waitUntilAtLeastOneExists(hasText(s(R.string.action_favorite)), 5_000)
+        rule.onNodeWithText(s(R.string.action_favorite)).performClick()
+        rule.waitUntilAtLeastOneExists(hasText(s(R.string.added_to_favorites)), 5_000)
+
+        // Folders view lists the Movies folder.
+        rule.onAllNodesWithText(s(R.string.tab_folders)).onFirst().performClick()
+        rule.waitUntilAtLeastOneExists(hasText("Movies"), 5_000)
     }
 
     companion object {
