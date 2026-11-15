@@ -118,17 +118,23 @@ fun ColorScheme.pureBlack(): ColorScheme = copy(
 fun ColorScheme.guarded(): ColorScheme {
     val surfaces = listOf(surface, surfaceContainerLow, surfaceContainer, surfaceContainerHigh)
     fun onAll(c: Color): Color = surfaces.fold(c) { acc, bg -> Contrast.ensure(acc, bg) }
+    // Accents are fixed first, then their "on" colours are checked against the fixed accents.
+    val p = onAll(primary)
+    val s = onAll(secondary)
+    val t = onAll(tertiary)
+    val e = onAll(error)
     return copy(
         onSurface = onAll(onSurface),
         onBackground = Contrast.ensure(onBackground, background),
         onSurfaceVariant = onAll(onSurfaceVariant),
-        primary = onAll(primary),
-        secondary = onAll(secondary),
-        tertiary = onAll(tertiary),
-        error = onAll(error),
-        onPrimary = Contrast.ensure(onPrimary, primary),
-        onSecondary = Contrast.ensure(onSecondary, secondary),
-        onTertiary = Contrast.ensure(onTertiary, tertiary),
+        primary = p,
+        secondary = s,
+        tertiary = t,
+        error = e,
+        onPrimary = Contrast.ensure(onPrimary, p),
+        onSecondary = Contrast.ensure(onSecondary, s),
+        onTertiary = Contrast.ensure(onTertiary, t),
+        onError = Contrast.ensure(onError, e),
         onPrimaryContainer = Contrast.ensure(onPrimaryContainer, primaryContainer),
         onSecondaryContainer = Contrast.ensure(onSecondaryContainer, secondaryContainer),
         onTertiaryContainer = Contrast.ensure(onTertiaryContainer, tertiaryContainer),

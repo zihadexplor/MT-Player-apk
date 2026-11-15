@@ -35,7 +35,12 @@ class LibraryIndex(
 
     val genres: List<Genre> = this.songs.filter { it.genre.isNotBlank() }
         .groupBy { it.genre.trim().lowercase(Locale.ROOT) }
-        .map { (_, list) -> Genre(list.first().genre.trim(), list) }
+        .map { (_, list) ->
+            // Display the most common spelling; on ties prefer the capitalised one ("Pop" over "pop").
+            val name = list.groupingBy { it.genre.trim() }.eachCount().entries
+                .maxWith(compareBy<Map.Entry<String, Int>> { it.value }.thenBy { it.key.first().isUpperCase() }).key
+            Genre(name, list)
+        }
         .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
 
     val musicFolders: List<MusicFolder> = this.songs.groupBy { it.folderPath }.map { (path, list) ->

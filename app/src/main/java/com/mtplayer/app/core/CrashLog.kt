@@ -52,7 +52,7 @@ class CrashLog(context: Context) {
 
     companion object {
         private const val MAX_ENTRIES = 5
-        private val pathPattern = Regex("""(/storage/|/sdcard/|/data/user/\d+/|content://)[^\s:)'"]*""")
+        private val pathPattern = Regex("""(/storage/|/sdcard/|/data/user/\d+/|content://)[^\n'")]*""")
         fun redact(text: String): String = text.replace(pathPattern) { m -> m.groupValues[1] + "<redacted>" }
     }
 }

@@ -25,8 +25,17 @@ object Contrast {
      */
     fun ensure(color: Color, background: Color, minRatio: Double = AA_TEXT): Color {
         if (ratio(color, background) >= minRatio) return color
-        val towardWhite = background.luminance() < 0.5f
-        val target = if (towardWhite) Color.White else Color.Black
+        // Prefer the direction away from the background; fall back to the other one for
+        // mid-tone backgrounds where only black (or only white) can reach the target.
+        val preferred = if (background.luminance() < 0.5f) Color.White else Color.Black
+        val other = if (preferred == Color.White) Color.Black else Color.White
+        return toward(color, background, preferred, minRatio)
+            ?: toward(color, background, other, minRatio)
+            ?: onColor(background)
+    }
+
+    private fun toward(color: Color, background: Color, target: Color, minRatio: Double): Color? {
+        if (ratio(target, background) < minRatio) return null
         var low = 0f
         var high = 1f
         var best = target
