@@ -41,7 +41,7 @@ or usage limit. Read it first, then `docs/rewrite/00-phase0-audit.md`, `02-archi
 | 3 | Emulator CI (API 29/34/35) + install-over-v1.3.0 release-signed migration test | Done: all jobs green on `7eaae21` (run 43732219946), report `05-phase3-report.md` |
 | 4 | Review and fix pass per feature from emulator evidence | Done (UPSERT crash, PiP state, theme/permission/queue evidence), report `06-phase4-5-report.md` |
 | 5 | Hardening: lint 0 errors + blocking, StrictMode debug, main-thread I/O, backup rules | Done, report `06-phase4-5-report.md` |
-| 6 | PR `rewrite/v2 -> main`, CI green on PR, merge (triggers signed v2.0.0 release) | In progress |
+| 6 | PR `rewrite/v2 -> main`, CI green on PR, merge (triggers signed v2.0.0 release) | Done: PR #5 merged (`b7bb8bf`) after green PR CI (run 43733708834); Release run 43735048681 published v2.0.0 |
 
 The phase table was re-scoped after Phase 1: screens originally split across phases 3–6 were
 built together in Phase 2 because they share one design system and navigation shell.
@@ -73,12 +73,15 @@ pass locally.
 
 ## Exact next steps
 
-1. PR is #5 (https://github.com/zihadexplor/MT-Player-apk/pull/5).
-2. Wait for the PR's CI (`gh pr checks <n>`); fix anything red.
-3. Merge with a merge commit (no `[skip ci]` in the message, or release.yml is skipped).
-4. Watch `release.yml` on main; confirm release v2.0.0 with `release-MT-Player-v2.0.0.apk` and
-   SHA256SUMS.txt exists (`gh release view v2.0.0`).
-5. Report to the owner; owner actions: delete `MT_UPDATER_TOKEN` secret, run OWNER-MANUAL-TESTS.
+The rewrite is merged and v2.0.0 is released
+(https://github.com/zihadexplor/MT-Player-apk/releases/tag/v2.0.0, `release-MT-Player-v2.0.0.apk`
++ SHA256SUMS.txt, signing certificate verified by release.yml).
+
+Remaining owner actions:
+1. Delete the obsolete `MT_UPDATER_TOKEN` repository secret.
+2. Run `docs/OWNER-MANUAL-TESTS.md` on physical phones and Android TV.
+
+Future work starts from a new branch off `main`; CI (`ci.yml`) runs on PRs.
 
 ## CI findings (Phase 3, resolved)
 
