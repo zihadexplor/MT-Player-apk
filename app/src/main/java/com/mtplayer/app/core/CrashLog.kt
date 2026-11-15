@@ -12,12 +12,15 @@ import java.util.Locale
  * read and share them from Settings. Nothing is uploaded. File paths and content URIs are
  * redacted so a shared report never exposes the user's folder names.
  */
-class CrashLog(context: Context) {
-    private val dir = File(context.filesDir, "crash").apply { mkdirs() }
-    private val versionLine = runCatching {
-        val info = context.packageManager.getPackageInfo(context.packageName, 0)
-        "${info.versionName} (${info.longVersionCode})"
-    }.getOrDefault("unknown")
+class CrashLog(private val context: Context) {
+    // Resolved lazily: Application.onCreate must not touch the disk on the main thread.
+    private val dir by lazy { File(context.filesDir, "crash") }
+    private val versionLine by lazy {
+        runCatching {
+            val info = context.packageManager.getPackageInfo(context.packageName, 0)
+            "${info.versionName} (${info.longVersionCode})"
+        }.getOrDefault("unknown")
+    }
 
     fun install() {
         val previous = Thread.getDefaultUncaughtExceptionHandler()
@@ -37,6 +40,7 @@ class CrashLog(context: Context) {
             appendLine()
             append(redact(error.stackTraceToString()))
         }
+        dir.mkdirs()
         File(dir, "crash-$stamp.txt").writeText(body)
         trim()
     }

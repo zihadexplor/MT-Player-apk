@@ -32,9 +32,15 @@ log "API $API"
 adb logcat -c || true
 
 # --- Test media ------------------------------------------------------------------------------
-adb shell mkdir -p /sdcard/Music /sdcard/Movies
-adb push build/test-media/mt_ci_tone_one.wav build/test-media/mt_ci_tone_two.wav /sdcard/Music/ >/dev/null
-adb push build/test-media/mt_ci_clip.mp4 /sdcard/Movies/ >/dev/null
+# Shared storage (FUSE) can lag behind sys.boot_completed on fresh emulators: wait, then retry.
+for i in $(seq 1 30); do
+  adb shell 'mkdir -p /sdcard/Music /sdcard/Movies && touch /sdcard/Music/.mt_probe && rm /sdcard/Music/.mt_probe' >/dev/null 2>&1 && break
+  sleep 2
+done
+push_retry() { for i in 1 2 3 4 5; do adb push "$1" "$2" >/dev/null && return 0; sleep 3; done; fail "could not push $1"; }
+push_retry build/test-media/mt_ci_tone_one.wav /sdcard/Music/
+push_retry build/test-media/mt_ci_tone_two.wav /sdcard/Music/
+push_retry build/test-media/mt_ci_clip.mp4 /sdcard/Movies/
 for f in /sdcard/Music/mt_ci_tone_one.wav /sdcard/Music/mt_ci_tone_two.wav /sdcard/Movies/mt_ci_clip.mp4; do
   adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d "file://$f" >/dev/null 2>&1 || true
 done

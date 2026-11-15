@@ -1,5 +1,11 @@
 package com.mtplayer.app.feature.settings
 
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import android.content.Intent
 import android.os.Build
 import androidx.compose.foundation.clickable
@@ -69,7 +75,9 @@ fun SettingsScreen() {
     var picker by rememberSaveable { mutableStateOf<Picker?>(null) }
     var confirmClear by rememberSaveable { mutableStateOf(false) }
     var showCrash by rememberSaveable { mutableStateOf(false) }
-    var crashCount by remember { mutableStateOf(container.crashLog.entries().size) }
+    var crashCount by remember { mutableStateOf(0) }
+    LaunchedEffect(Unit) { crashCount = withContext(Dispatchers.IO) { container.crashLog.entries().size } }
+    val scope = rememberCoroutineScope()
     val cleared = stringResource(R.string.history_cleared)
 
     Column(Modifier.fillMaxSize()) {
@@ -136,7 +144,7 @@ fun SettingsScreen() {
             stringResource(R.string.cancel), onConfirm = { vm.clearHistory { messenger.show(cleared) } }, onDismiss = { confirmClear = false }, destructive = true)
     }
     if (showCrash) {
-        val text = remember { container.crashLog.latestText()?.let(CrashLog::redact).orEmpty() }
+        val text by produceState("") { value = withContext(Dispatchers.IO) { container.crashLog.latestText()?.let(CrashLog::redact).orEmpty() } }
         AlertDialog(
             onDismissRequest = { showCrash = false },
             title = { Text(stringResource(R.string.crash_reports)) },
@@ -154,7 +162,7 @@ fun SettingsScreen() {
                 }) { Text(stringResource(R.string.share)) }
             },
             dismissButton = {
-                TextButton(onClick = { container.crashLog.clear(); crashCount = 0; showCrash = false }) { Text(stringResource(R.string.clear)) }
+                TextButton(onClick = { scope.launch(Dispatchers.IO) { container.crashLog.clear() }; crashCount = 0; showCrash = false }) { Text(stringResource(R.string.clear)) }
             },
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         )
