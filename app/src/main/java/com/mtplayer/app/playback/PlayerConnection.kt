@@ -177,6 +177,20 @@ class PlayerConnection(private val context: Context) : DefaultLifecycleObserver 
         )
     }
 
+    /** Plays a single file opened from another app ("Open with"). */
+    fun playUri(uri: android.net.Uri, mimeType: String?) = withController { c ->
+        val title = uri.lastPathSegment?.substringAfterLast('/')?.substringBeforeLast('.') ?: ""
+        val item = MediaItem.Builder()
+            .setUri(uri)
+            .setMediaId("uri:$uri")
+            .setMimeType(mimeType)
+            .setMediaMetadata(MediaMetadata.Builder().setTitle(title).setDisplayTitle(title).build())
+            .build()
+        c.setMediaItem(item)
+        c.prepare()
+        c.play()
+    }
+
     /** Hands a video's audio to the music service (background audio from the video player). */
     fun playVideoAudio(item: MediaItem, positionMs: Long, speed: Float) = withController { c ->
         c.setMediaItem(item, positionMs)

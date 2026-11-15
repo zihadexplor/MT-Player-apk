@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 320x180 Android TV banner: gradient field with the MT Player mark. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/tv_banner_background" />
+    <item android:drawable="@drawable/ic_launcher_foreground" android:gravity="center" android:width="160dp" android:height="160dp" />
+</layer-list>

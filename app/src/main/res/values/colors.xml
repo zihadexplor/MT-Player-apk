@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Only used before Compose draws (window/splash). Compose colours live in designsystem/theme. -->
+    <color name="window_background">#FFFAFAFC</color>
+    <color name="logo_start">#FFFF7A45</color>
+    <color name="logo_end">#FF7C5CFF</color>
+    <color name="logo_mark">#FFFFFFFF</color>
+    <color name="video_background">#FF000000</color>
+</resources>
