@@ -1,227 +1,121 @@
 # MT Player
 
-A modern, offline music & video player for Android, built with Kotlin, Jetpack Compose and Media3 (ExoPlayer).
-MT Player ships with a built-in, signature-verified updater that delivers new versions straight from GitHub Releases.
+An offline music and video player for Android phones, tablets and Android TV, built with
+Kotlin, Jetpack Compose (Material 3) and AndroidX Media3. Everything stays on the device:
+there is no streaming, online search, account or analytics. The only network request is the
+optional update check against this repository's public GitHub Releases.
 
 | | |
 |---|---|
-| **Min Android** | 9 (API 28) |
-| **Target / compile** | Android 17 (API 37) — forward compatible with newer releases |
-| **Language** | Kotlin 2.4 · Java 17 bytecode |
-| **UI** | Jetpack Compose · Material 3 |
-| **Playback** | AndroidX Media3 (ExoPlayer + MediaSession) |
-| **Build** | Official Gradle 9.8.2 wrapper · Android Gradle Plugin 9.5 |
+| Min Android | 9 (API 28) |
+| Target / compile | API 36 |
+| Language | Kotlin · Java 17 bytecode |
+| UI | Jetpack Compose · Material 3 · dark-first theme with light, system and pure-black modes |
+| Playback | Media3 ExoPlayer · MediaLibraryService · MediaSession |
+| Storage | Room (`mtplayer.db`) · DataStore |
+| Build | Gradle wrapper · Android Gradle Plugin · R8 for release |
 
----
+Version 2 is a complete rewrite of 1.x. It keeps the same application id and signing key, so it
+installs as an update and imports 1.x favourites, playlists, history, video resume points,
+hidden folders and settings (read-only; the old database is never modified or deleted).
 
 ## Features
 
-- **Music** — local library (songs, albums, artists), mini player, full-screen player, background playback with a media notification and lock-screen controls.
-- **Video** — local video library with an immersive full-screen player.
-- **Equalizer** — system audio-effect equalizer with presets.
-- **In-app updates**
-  - Automatic background check on app start (at most once per session, snooze for 24 h with *Remind me later*).
-  - Update popup with version, size, date and the latest changes.
-  - Animated downloader with **Cancel** and **Download in background**; a notification is posted when the download completes.
-  - Before installing, the APK is verified: SHA-256 digest, package name, higher `versionCode`, and **same signing certificate** as the installed app.
-  - Works with a **private repository** (token) and falls back to the **public** GitHub URL.
-  - Manual check & settings under **Settings → App Updates**.
-
----
+- **Music**: songs, albums, artists, genres, folders and playlists; now playing with synced or
+  plain lyrics (embedded tags, `.lrc` next to the file, or a file you pick); queue editing;
+  shuffle and repeat; sleep timer with fade-out or finish-song; playback speed; equalizer, bass
+  boost and surround; background playback with a media notification, lock-screen and Bluetooth
+  controls; resume after the app is closed.
+- **Video**: grid or list, folders, continue watching; dedicated player with brightness,
+  volume and seek gestures, double-tap seek, pinch zoom, fit / crop / stretch, rotation lock,
+  audio and subtitle tracks, external subtitle files, speed, control lock, picture-in-picture
+  and optional background audio.
+- **Library**: favourites, recently played, most played, watch history, local search (accent-
+  and case-insensitive), hidden folders, minimum audio length filter.
+- **Adaptive layout**: bottom navigation on phones, navigation rail on tablets and TV, D-pad
+  and media-key support.
+- **Updater** (optional): verifies SHA-256, package name, version and signing certificate
+  before handing the APK to the system installer. No credentials are embedded.
 
 ## Project structure
 
 ```
-.
-├── app/
-│   ├── build.gradle.kts            # app module: SDK levels, signing, BuildConfig, R8
-│   ├── proguard-rules.pro
-│   └── src/
-│       ├── main/java/com/example/
-│       │   ├── MainActivity.kt
-│       │   ├── data/               # models + MediaStore repository
-│       │   ├── player/             # MusicPlayerManager, equalizer
-│       │   ├── service/            # PlaybackService (MediaSessionService)
-│       │   ├── ui/                 # Compose screens, components, theme, view-models
-│       │   └── update/             # in-app updater (see below)
-│       └── test/                   # unit + Robolectric screenshot tests
-├── gradle/
-│   ├── libs.versions.toml          # version catalog (single place for dependency versions)
-│   └── wrapper/                    # official Gradle wrapper (checksum-pinned)
-├── version.properties              # VERSION_NAME / VERSION_CODE (single source of truth)
-├── keystore.properties.example     # template for local release signing
-└── .github/
-    ├── workflows/ci.yml            # build + test on PRs and feature branches
-    ├── workflows/release.yml       # version bump + signed APK + GitHub Release on main
-    ├── scripts/                    # compute-version.sh, release-notes.sh
-    └── release-signing-cert.sha256 # expected release certificate fingerprint
-```
-
-### Updater package (`com.example.update`)
-
-| File | Responsibility |
-|---|---|
-| `GitHubReleaseClient.kt` | Fetches the latest release. Uses the API with a token first, falls back to the public API. Resolves private asset downloads. |
-| `UpdateManager.kt` | Check / snooze / download state machine (uses `DownloadManager`, survives process death). |
-| `ApkInstaller.kt` | Verifies the downloaded APK (hash, package, version, signature) and installs it via `PackageInstaller`. |
-| `UpdateNotifier.kt`, `UpdateReceivers.kt` | Download-complete notification and install-result handling. |
-| `UpdatePreferences.kt` | Persisted settings (auto-check, snooze, pending download). |
-| `ui/UpdateDialog.kt`, `ui/UpdateHost.kt`, `ui/UpdateSettingsSection.kt` | Update popup, downloader animation and settings card. |
-
----
-
-## Requirements
-
-- JDK 17 or newer (CI uses Temurin 21)
-- Android SDK with platform **android-37** and recent build-tools
-- No need to install Gradle — always use the wrapper (`./gradlew`)
-
-Create `local.properties` (not committed) if Android Studio didn't:
-
-```properties
-sdk.dir=/path/to/Android/sdk
+app/src/main/java/com/mtplayer/app/
+├── core/            crash log (local only, paths redacted), device class, formatting, permissions
+├── data/            MediaStore source + LibraryIndex, Room DB + legacy importer, settings, lyrics
+├── designsystem/    theme (palette, contrast guard, typography) and shared components
+├── feature/         shell (activity, navigation, mini player), home, music, videos, saved,
+│                    search, detail, now playing, equalizer, settings
+├── playback/        PlaybackService (MediaLibraryService), PlayerConnection, audio effects
+├── update/          UpdateManager, install result receiver
+├── ui/image/        video thumbnail fetcher for Coil
+└── video/           VideoPlayerActivity + VideoPlayerScreen
+app/src/test/        JVM + Robolectric unit tests
+app/src/androidTest/ instrumentation tests (run on emulators in CI)
+app/schemas/         exported Room schemas (migration fixtures)
+docs/rewrite/        audit, research, architecture, ADRs, phase reports, handover
+docs/OWNER-MANUAL-TESTS.md  checks that need a physical device
 ```
 
 ## Build
 
+Requirements: JDK 17+ (CI uses Temurin 21) and an Android SDK with platform 36. Always use the
+wrapper. Create `local.properties` with `sdk.dir=/path/to/Android/sdk` if Android Studio did not.
+
 ```bash
-# Debug build (applicationId suffix .debug, installs next to the release app)
-./gradlew assembleDebug
-
-# Unit + screenshot tests
-./gradlew testDebugUnitTest
-
-# Signed release build (needs the release keystore, see below)
-./gradlew assembleRelease
+./gradlew assembleDebug          # debug build, applicationId suffix .debug (installs side by side)
+./gradlew testDebugUnitTest      # unit + Robolectric tests
+./gradlew connectedDebugAndroidTest   # instrumentation tests on a connected device/emulator
+./gradlew assembleRelease        # R8 release build (unsigned without the release keystore)
 ```
 
-Outputs are written to `app/build/outputs/apk/<variant>/`.
+## Signing
 
----
-
-## Signing — constant release keystore
-
-Android only accepts an update if it is signed with **the same key** as the installed app.
-For that reason this project **never** generates a random or debug key for releases:
-
-- CI restores one fixed keystore from repository secrets and fails the build if it is missing.
-- After building, CI compares the APK certificate against `.github/release-signing-cert.sha256` and refuses to publish if it differs.
-- Locally, a release build without credentials is produced **unsigned** instead of being signed with a throw-away key.
+Android only accepts an update signed with the same key as the installed app, so releases are
+always signed with one constant keystore stored in GitHub secrets. CI verifies the certificate
+against `.github/release-signing-cert.sha256` and refuses to publish anything else. Without the
+credentials a local release build is left unsigned instead of being signed with a throw-away key.
 
 | GitHub secret | Value |
 |---|---|
-| `MT_KEYSTORE_BASE64` | `base64 -w0 mtplayer-release.jks` |
+| `MT_KEYSTORE_BASE64` | base64 of the release keystore |
 | `MT_KEYSTORE_PASSWORD` | keystore password |
-| `MT_KEY_ALIAS` | key alias (`mtplayer`) |
+| `MT_KEY_ALIAS` | key alias |
 | `MT_KEY_PASSWORD` | key password |
-| `MT_UPDATER_TOKEN` | *optional* — read-only token for a private repo (see below) |
 
-For local release builds copy `keystore.properties.example` to `keystore.properties` (git-ignored) and fill it in,
-or export `MT_KEYSTORE_PATH`, `MT_KEYSTORE_PASSWORD`, `MT_KEY_ALIAS`, `MT_KEY_PASSWORD`.
+For local release builds copy `keystore.properties.example` to `keystore.properties`
+(git-ignored) or export `MT_KEYSTORE_PATH`, `MT_KEYSTORE_PASSWORD`, `MT_KEY_ALIAS`,
+`MT_KEY_PASSWORD`. Keep an offline backup of the keystore; if it is lost, existing users can
+never be updated again.
 
-> **Keep an offline backup of the keystore and its passwords.** If the key is lost, existing users can never receive an update again.
-> GitHub secrets cannot be read back once saved.
+The old `MT_UPDATER_TOKEN` secret is no longer used and can be deleted from the repository
+settings: a token inside an APK can be extracted by anyone.
 
----
+## CI and releases
 
-## Versioning & releases
-
-`version.properties` is the single source of truth:
-
-```properties
-VERSION_NAME=1.0.0
-VERSION_CODE=1
-```
-
-Every push to `main` runs **Release** (`.github/workflows/release.yml`):
-
-1. **Compute version** — if you bumped `VERSION_NAME` yourself it is used; otherwise it is bumped automatically from
-   [Conventional Commits](https://www.conventionalcommits.org/) since the last tag:
-   `feat!:` / `BREAKING CHANGE` → major, `feat:` → minor, anything else → patch.
-   `VERSION_CODE` always increases.
-2. **Build** the release APK, signed with the constant keystore, and verify the certificate.
-3. **Commit** the bumped `version.properties` back to `main` (`[skip ci]`).
-4. **Publish** a GitHub Release `vX.Y.Z` with:
-   - `release-MT-Player-vX.Y.Z.apk` (the APK itself, not zipped)
-   - `SHA256SUMS.txt`
-   - Source code `.zip` and `.tar.gz` (added automatically by GitHub)
-   - Release notes grouped from the commits since the previous release.
-
-Changes that only touch Markdown/docs do not create a release. A release can also be started manually from
-**Actions → Release → Run workflow** with a forced bump type (`patch`, `minor`, `major`).
-
-**CI** (`.github/workflows/ci.yml`) runs on pull requests and non-main branches: wrapper validation, debug build, unit tests, lint and a version dry-run.
-
-### Commit message examples
-
-```
-feat(player): add playback speed control      -> minor
-fix(equalizer): keep preset after track change -> patch
-feat!: drop Android 9 support                 -> major
-```
-
----
-
-## How the updater works
-
-```
-App start ──► background check (once per session, skipped if snoozed)
-                │
-                ├─ token present?  ──► api.github.com (authenticated)  ──┐
-                │                      on failure ▼                       │
-                └──────────────────► api.github.com (public)  ───────────┤
-                                                                          ▼
-                              newer versionCode/version?  ──► Update popup
-                                                                │
-                         Remind me later (24 h) ◄───────────────┤
-                                                                ▼
-                         Download (DownloadManager) ── Cancel / Download in background
-                                                                │  notification when done
-                                                                ▼
-                 verify SHA-256 + package + versionCode + signing certificate
-                                                                ▼
-                                       PackageInstaller (system confirmation)
-```
-
-- The release notes contain a hidden `<!-- versionCode: N -->` marker that the app reads to compare versions.
-- If the user has not yet allowed "Install unknown apps" for MT Player, the app opens the system screen once.
-
-### Going private
-
-When the repository becomes private, the updater needs a token to read releases:
-
-1. Create a **fine-grained personal access token** — Repository access: *only* `MT-Player-apk`; Permissions: **Contents: Read-only**. Nothing else.
-2. Save it as the repository secret **`MT_UPDATER_TOKEN`**.
-3. Push to `main`; the next release embeds the token and keeps updating normally.
-
-Without the secret the app simply uses the public URL, so it keeps working while the repo is public.
-
-> **Security note:** a token inside an APK can be extracted by anyone who has the APK (it is only lightly obfuscated).
-> Use the narrowest token possible (single repo, read-only contents) and rotate it if it leaks.
-
----
+- **CI** (`.github/workflows/ci.yml`, pull requests and non-main branches): wrapper validation,
+  debug build, unit tests, lint, then emulator jobs on API 29, 34 and 35 (instrumentation tests,
+  permission gate, MediaSession and notification checks via `dumpsys`, queue restore after the
+  app is killed) and an update test that installs the published v1.3.0 release, adds 1.x data,
+  installs the new release-signed build over it and verifies the import. Screenshots, UI dumps
+  and logs are uploaded as artifacts.
+- **Release** (`.github/workflows/release.yml`, every push to `main`): computes the version
+  from `version.properties` or Conventional Commits, builds and verifies the signed APK, and
+  publishes `release-MT-Player-vX.Y.Z.apk` with `SHA256SUMS.txt` and release notes. The R8
+  mapping file is kept as a workflow artifact.
 
 ## Permissions
 
-Only what the features need:
-
 | Permission | Why |
 |---|---|
-| `READ_MEDIA_AUDIO`, `READ_MEDIA_VIDEO` | Show local music and videos (Android 13+) |
-| `READ_EXTERNAL_STORAGE` (`maxSdkVersion=32`) | Same, on Android 9 – 12 only |
-| `POST_NOTIFICATIONS` | Playback controls and "update downloaded" notification (Android 13+) |
+| `READ_MEDIA_AUDIO`, `READ_MEDIA_VIDEO`, `READ_MEDIA_VISUAL_USER_SELECTED` | Read local music and videos (Android 13+, partial access on 14+) |
+| `READ_EXTERNAL_STORAGE` (max SDK 32) | Same on Android 9–12 |
+| `POST_NOTIFICATIONS` | Playback notification (Android 13+) |
 | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, `WAKE_LOCK` | Background playback |
-| `MODIFY_AUDIO_SETTINGS` | Equalizer |
-| `INTERNET` | Checking and downloading updates |
-| `REQUEST_INSTALL_PACKAGES` | Installing a downloaded update (user confirms every install) |
-
-Hardening: cleartext HTTP disabled, update files excluded from backups, only the receiver that needs it is exported, R8 shrinking and obfuscation enabled for release.
-
----
+| `MODIFY_AUDIO_SETTINGS` | Equalizer and effects |
+| `INTERNET`, `REQUEST_INSTALL_PACKAGES` | Optional update check and install (the user confirms each install) |
 
 ## Contributing
 
-1. Branch from `main` (`feat/...`, `fix/...`).
-2. Use Conventional Commit messages — they drive the version bump and release notes.
-3. Open a pull request; CI must pass.
-4. Merging to `main` publishes a new release automatically.
+Branch from `main`, use Conventional Commit messages (they drive versioning and release notes),
+open a pull request and wait for CI. Merging to `main` publishes a release.
