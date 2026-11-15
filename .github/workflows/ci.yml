@@ -1,6 +1,8 @@
 name: CI
 
-# Fast feedback for pull requests and feature branches: debug build, unit tests and lint.
+# Pull requests and feature branches: debug build, unit tests and lint, then emulator tests
+# (instrumentation, shell-level playback/notification/resume checks) and a real update test
+# from the published v1.3.0 release.
 # Releases are produced only by release.yml on main.
 
 on:
@@ -80,3 +82,115 @@ jobs:
             app/build/reports/
             app/build/test-results/
           retention-days: 7
+
+  emulator:
+    name: Emulator tests (API ${{ matrix.api }})
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [29, 34, 35]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: true
+      - name: Build app and test APKs
+        run: |
+          chmod +x ./gradlew .github/scripts/*.sh
+          ./gradlew assembleDebug assembleDebugAndroidTest
+      - name: Generate test media
+        run: bash .github/scripts/make-test-media.sh
+      - name: Run emulator tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api }}
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -no-boot-anim -camera-back none -camera-front none
+          script: bash .github/scripts/emulator-tests.sh
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: emulator-evidence-api${{ matrix.api }}
+          path: build/emulator-evidence/
+          retention-days: 14
+
+  update-compat:
+    name: Update over v1.3.0 (release-signed, API 34)
+    needs: build
+    # Needs the release signing secrets, which are not available to pull requests from forks.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: true
+      - name: Download v1.3.0 release APK
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p build/v1
+          gh release download v1.3.0 --pattern '*.apk' --pattern 'SHA256SUMS.txt' --dir build/v1
+          (cd build/v1 && sha256sum -c SHA256SUMS.txt)
+      - name: Build release APK (R8, release key)
+        env:
+          MT_KEYSTORE_BASE64: ${{ secrets.MT_KEYSTORE_BASE64 }}
+          MT_KEYSTORE_PASSWORD: ${{ secrets.MT_KEYSTORE_PASSWORD }}
+          MT_KEY_ALIAS: ${{ secrets.MT_KEY_ALIAS }}
+          MT_KEY_PASSWORD: ${{ secrets.MT_KEY_PASSWORD }}
+        run: |
+          if [ -z "$MT_KEYSTORE_BASE64" ]; then echo "::error::release keystore secret missing"; exit 1; fi
+          echo "$MT_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
+          export MT_KEYSTORE_PATH="$RUNNER_TEMP/release.jks"
+          chmod +x ./gradlew .github/scripts/*.sh
+          ./gradlew --no-configuration-cache assembleRelease
+          rm -f "$RUNNER_TEMP/release.jks"
+          BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          APK=$(ls app/build/outputs/apk/release/*.apk | grep -v unsigned | head -1)
+          ACTUAL=$("$BT/apksigner" verify --print-certs "$APK" | grep -m1 'certificate SHA-256 digest' | awk '{print $NF}')
+          EXPECTED=$(tr -d '[:space:]' < .github/release-signing-cert.sha256)
+          [ "$ACTUAL" = "$EXPECTED" ] || { echo "::error::release APK not signed with the release key"; exit 1; }
+          echo "NEW_APK=$APK" >> "$GITHUB_ENV"
+      - name: Install v1.3.0, add data, update to v2, verify import
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -no-boot-anim -camera-back none -camera-front none
+          script: bash .github/scripts/update-compat.sh
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: update-compat-evidence
+          path: build/emulator-evidence/
+          retention-days: 14

@@ -91,7 +91,6 @@ jobs:
           MT_KEYSTORE_PASSWORD: ${{ secrets.MT_KEYSTORE_PASSWORD }}
           MT_KEY_ALIAS: ${{ secrets.MT_KEY_ALIAS }}
           MT_KEY_PASSWORD: ${{ secrets.MT_KEY_PASSWORD }}
-          MT_UPDATER_TOKEN: ${{ secrets.MT_UPDATER_TOKEN }}
         run: |
           chmod +x ./gradlew
           ./gradlew --no-configuration-cache assembleRelease testDebugUnitTest
@@ -131,6 +130,13 @@ jobs:
           (cd dist && sha256sum "$NAME" > SHA256SUMS.txt)
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Keep R8 mapping (for de-obfuscating crash reports)
+        uses: actions/upload-artifact@v4
+        with:
+          name: r8-mapping-v${{ steps.version.outputs.version_name }}
+          path: app/build/outputs/mapping/release/mapping.txt
+          retention-days: 90
 
       - name: Commit version bump
         id: commit

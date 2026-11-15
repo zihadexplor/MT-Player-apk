@@ -37,66 +37,60 @@ or usage limit. Read it first, then `docs/rewrite/00-phase0-audit.md`, `02-archi
 |---|---|---|
 | 0 | Audit, environment, executable wrapper | Done (`f2a08de`) |
 | 1 | Research, architecture, feature inventory, ADRs 001–011 | Done (`c641d5f`) |
-| 2 | Foundation: design system, data layer, DB + legacy import, playback core, updater, app shell, logo | In progress |
-| 3 | Music experience: now playing, queue, lyrics, sleep timer, equalizer, notification verification | Planned |
-| 4 | Video: dedicated activity, gestures, subtitles, PiP, resume, background audio | Planned |
-| 5 | Library, favourites, playlists, history, search screens | Planned |
-| 6 | Settings, theme polish, contrast tests | Planned |
-| 7 | Hardening: R8, memory, ANR, crash log, TV, permissions | Planned |
-| 8 | Tests (unit, Robolectric, emulator CI), evidence, docs, PR + merge | Planned |
+| 2 | Full rebuild: design system, data, DB + legacy import, playback, updater, shell, all screens, video player, logo, unit tests | Code complete, compiles, 25 unit tests pass locally and in CI (`bf96544`, run 43725855199 green) |
+| 3 | Emulator CI: instrumentation tests (UI smoke, playback + MediaSession/notification, process death, PiP, permissions), install-over-v1.3.0 data migration test | Next |
+| 4 | Review and fix pass per feature from emulator evidence (music, video, library, settings, TV/rail layout) | Planned |
+| 5 | Hardening: R8 release build + keep rules, lint clean, StrictMode in debug, memory/ANR review, low-RAM paths | Planned |
+| 6 | Docs (README, OWNER-MANUAL-TESTS, phase reports), remove `MT_UPDATER_TOKEN` from release.yml, PR `rewrite/v2 -> main`, CI green, merge | Planned |
 
-Phase 2 is large; screens may land across phases 2–6 as listed above.
+The phase table was re-scoped after Phase 1: screens originally split across phases 3–6 were
+built together in Phase 2 because they share one design system and navigation shell.
 
 ## Current state of `rewrite/v2`
 
-The old `com.example` source tree is deleted. New code lives in `app/src/main/java/com/mtplayer/app`
-(namespace `com.mtplayer.app`). **The app does not compile yet**: AndroidManifest, resources and
-UI layer are still missing.
+The old `com.example` tree is deleted. All code is new in `app/src/main/java/com/mtplayer/app`
+(namespace `com.mtplayer.app`, applicationId unchanged). `assembleDebug` and `testDebugUnitTest`
+pass locally.
 
-Written so far (Phase 2):
-
-- `designsystem/theme/` — `Color.kt` ("Tide" palette, contrast-checked), `Contrast.kt` (WCAG
-  helpers + `ensure`), `Theme.kt` (dark/light schemes, pure-black, dynamic colour guarded,
-  `MtTheme`, `ThemeMode`), `Type.kt` (Manrope variable font, `res/font/manrope.ttf`).
-- `core/` — `CrashLog` (local only, path redaction), `DeviceClass` (low-RAM/TV), `Format`, `Permissions`.
-- `data/media/` — `Models`, `MediaStoreSource` (IS_MUSIC != 0 AND duration filter), `LibraryIndex`
-  (grouping + accent-insensitive search), `LibraryRepository` (state, ContentObserver, hidden folders).
-- `data/db/` — Room `mtplayer.db` v1 (`Entities`, `Daos`, `MtDatabase`, exportSchema, no destructive
-  fallback) and `LegacyImporter` (read-only import of `melody_player_local.db` + `mt_player_video_prefs`,
-  skips seeded fake playlists, one transaction + marker, never deletes old DB).
-- `data/prefs/SettingsStore` (DataStore), `data/repo/` (`UserDataRepository`, `Lyrics` + `LrcParser`,
-  `LyricsRepository`: linked SAF file, sidecar on API ≤ 29, embedded USLT/Vorbis/MP4).
-- `playback/` — `PlaybackService` (MediaLibraryService, notification buttons favourite/repeat/shuffle,
-  sleep timer with fade/finish-song, queue persistence + `onPlaybackResumption`, error skip limit,
-  audio effects, browse tree), `PlayerConnection` (MediaController, connects on process start),
-  `MediaItems`, `AudioEffects`.
-- `update/` — `UpdateManager` (public API, SHA256SUMS.txt check, package/versionCode/signer check,
-  PackageInstaller), `InstallResultReceiver`.
-- `ui/image/VideoFrameFetcher` (Coil fetcher for MediaStore video thumbnails), `MTApp`, `AppContainer`.
+- `designsystem/theme` — Tide palette, `Contrast` (WCAG; `ensure` tries both directions),
+  `Theme` (dark/light/pure-black, guarded dynamic colour, `resolveDark`, `MtTheme`), `Type`.
+- `designsystem/components` — Artwork, States (loading/message), Feedback (Messenger snackbar,
+  dialogs, action/choice sheets), Rows (MediaRow, VideoCard, TileCard, PlayingBars…).
+- `core`, `data` (MediaStore → `LibraryIndex`, Room `mtplayer.db` v1 with exported schema in
+  `app/schemas`, `LegacyImporter`, DataStore settings, lyrics), `playback` (MediaLibraryService +
+  notification + sleep timer + queue persistence), `update` (token-free, SHA-256 + signer check).
+- `feature/shell` — MainActivity (splash, edge-to-edge, audio VIEW intents), AppRoot (bottom bar /
+  rail ≥600dp, mini player with close + swipe dismiss, permission gate), Navigation, MediaActions
+  (song/video sheets, add-to-playlist, favourites with undo).
+- `feature/*` — Home, Music (6 tabs), Videos (grid/list, folders), Saved, Search, detail screens,
+  Settings (+ hidden folders, crash reports), UpdatePrompt, Equalizer, Now Playing (lyrics, queue,
+  sleep, speed).
+- `video/` — VideoPlayerActivity (own ExoPlayer + MediaSession id `mt_video`, resume, PiP with
+  remote actions/auto-enter, background audio hand-off, subtitles via SAF) and VideoPlayerScreen
+  (gestures, fit modes, lock, track/speed sheets).
+- Tests in `app/src/test`: ThemeContrastTest, LrcParserTest, LibraryIndexTest (Robolectric),
+  UpdateManagerTest, CrashLogTest, LegacyImporterTest (Robolectric, synthetic v1 DB).
 
 ## Exact next steps
 
-1. Write `AndroidManifest.xml` (MTApp, MainActivity singleTask + splash theme, VideoPlayerActivity
-   with PiP/configChanges, PlaybackService foregroundServiceType=mediaPlayback with
-   MediaLibraryService + MediaSessionService intent filters, `androidx.media3.session.MediaButtonReceiver`,
-   InstallResultReceiver not exported, leanback launcher + banner, touchscreen not required,
-   permissions: READ_MEDIA_AUDIO/VIDEO, READ_MEDIA_VISUAL_USER_SELECTED, READ_EXTERNAL_STORAGE
-   maxSdk 32, POST_NOTIFICATIONS, FOREGROUND_SERVICE(_MEDIA_PLAYBACK), WAKE_LOCK, INTERNET,
-   REQUEST_INSTALL_PACKAGES).
-2. Resources: `values/strings.xml` (all strings referenced: app_name, notification_channel_playback,
-   action_favorite/unfavorite/repeat/shuffle, tab_songs, tab_albums, favorites, import_done …),
-   `values/themes.xml` + `values-night`, splash theme, adaptive launcher icon (new logo: orange→violet
-   squircle, play triangle + waveform) with monochrome layer, `ic_notification`, TV banner,
-   `xml/backup_rules.xml`, `xml/data_extraction_rules.xml`, `proguard-rules.pro` for new package.
-3. UI layer: `designsystem/components` (MtSnackbarHost, MtDialog, MtBottomSheet, Artwork, list rows,
-   empty/loading/error states), `feature/shell/MainActivity` + navigation, mini player with close and
-   swipe-dismiss, Home/Music/Videos/Saved tabs, Search, Settings, detail screens, Now Playing.
-4. `video/VideoPlayerActivity`.
-5. Build locally, fix compile errors, add unit tests (Contrast, LrcParser, LibraryIndex, UpdateManager
-   helpers, LegacyImporter with Robolectric, Room schema), push without `[skip ci]`, write
-   `docs/rewrite/04-phase2-report.md`.
-6. CI: Gradle cache, emulator job (reactivecircus/android-emulator-runner, API 29/34/35), update test
-   from v1.3.0. Remove `MT_UPDATER_TOKEN` from `release.yml`. Update README.
+1. Confirm CI run for `bf96544` is green (`gh run list --branch rewrite/v2 --limit 3`). Fix if not.
+2. Write `docs/rewrite/04-phase2-report.md` (investigated / rebuilt / files+commits / tests / remaining / next).
+3. Phase 3: add `app/src/androidTest` (Compose UI smoke: launch, tabs, permission gate, settings theme
+   switch; MediaController test: service starts, metadata, notification posted via
+   NotificationManager.activeNotifications; Room in-device test) and a CI job
+   `emulator` using `reactivecircus/android-emulator-runner@v2` (API 29 + 34 + 35, x86_64, KVM enabled
+   via udev rule), plus an install-over-v1.3.0 job: download the v1.3.0 release APK, install, seed
+   data is not possible without root, so verify `adb install -r` of the new debug-signed build is
+   rejected only by signature (release signing is verified in release.yml) and that a debug build
+   imports a pushed synthetic `melody_player_local.db` via `run-as`.
+4. Phases 4–6 per the table.
+
+## Known issues / risks
+
+- Not yet verified on any emulator or device; everything beyond unit tests is unverified.
+- `Settings.artworkTint` and `gapless` are imported from v1 but not shown in UI (ExoPlayer is
+  gapless by default; no misleading toggle).
+- Lint runs with `continue-on-error` in CI; must be reviewed in Phase 5.
 
 ## Latest commit
 
