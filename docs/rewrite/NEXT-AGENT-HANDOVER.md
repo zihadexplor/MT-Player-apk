@@ -73,7 +73,7 @@ pass locally.
 
 ## Exact next steps
 
-1. Open (or find) the PR `rewrite/v2 -> main`: `gh pr list --head rewrite/v2`.
+1. PR is #5 (https://github.com/zihadexplor/MT-Player-apk/pull/5).
 2. Wait for the PR's CI (`gh pr checks <n>`); fix anything red.
 3. Merge with a merge commit (no `[skip ci]` in the message, or release.yml is skipped).
 4. Watch `release.yml` on main; confirm release v2.0.0 with `release-MT-Player-v2.0.0.apk` and
