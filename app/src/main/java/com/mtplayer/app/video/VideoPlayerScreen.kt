@@ -105,6 +105,7 @@ import kotlinx.coroutines.delay
 import kotlin.math.abs
 import kotlin.math.hypot
 
+@OptIn(UnstableApi::class)
 private enum class Fit(val mode: Int, val label: Int) {
     FIT(AspectRatioFrameLayout.RESIZE_MODE_FIT, R.string.aspect_fit),
     FILL(AspectRatioFrameLayout.RESIZE_MODE_ZOOM, R.string.aspect_crop),

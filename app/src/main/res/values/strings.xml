@@ -153,7 +153,7 @@
     <string name="delete_playlist_q">Delete \"%1$s\"?</string>
     <string name="delete_playlist_body">The playlist is removed. Your music files are not deleted.</string>
     <string name="playlist_deleted">Deleted \"%1$s\"</string>
-    <string name="already_in_playlist">Already in this playlist</string>
+    <string name="already_in_playlist">Already in %1$s</string>
     <string name="removed_from_playlist">Removed from playlist</string>
     <string name="remove_from_playlist">Remove from playlist</string>
     <string name="move_up">Move up</string>
