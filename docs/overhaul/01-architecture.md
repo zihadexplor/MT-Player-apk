@@ -22,7 +22,8 @@ Tokens live in `designsystem/theme`. Components never use raw colours.
 - **Neutrals:** warm ink (dark) and warm paper (light) instead of the cool blue-grey ink.
 - **Accent:** Ember stays the primary (brand continuity with v1/v2), tuned toward amber so it
   matches the new logo gradient (amber `#FFB45E` → ember `#FF6A3D`). Iris and Lagoon remain as
-  secondary/tertiary for chips and states.
+  secondary/tertiary for chips and states; secondary containers (tonal buttons) use warm sand
+  `#F2E2D5` (light) / clay `#3A2C27` (dark) so nothing reads as the old lavender.
 - **Type:** wide display face (Unbounded, SIL OFL 1.1) for page titles and section titles only;
   Manrope for everything read. Scale: page title 26/32, compact 22/28, section 17/24, overline
   11/16 bold caps tracking 0.08em.
