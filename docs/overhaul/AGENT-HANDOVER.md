@@ -11,20 +11,19 @@ overhaul. Update the "Progress" and "Next steps" sections after every push.
 | P1 Design system + greeting | Done | 5587b8f |
 | P2 Top navigation + dock | Done | 5587b8f |
 | P3 Home Jump back in + feed | Done | 5587b8f (UI test in the next commit) |
-| P4 Global refresh | Done (Now Playing, pill tabs, detail headers, chips) | see `git log` |
+| P4 Global refresh | Done (Now Playing, pill tabs, detail headers, chips, warm tonal buttons) | 4cbffae |
 | P5 Settings About credit | Done | 5587b8f |
-| P6 Brand / logo ("Ember Cascade") | Done | see `git log` |
-| P7 Tests + CI green | In progress — watch the latest run on `feat/ui-overhaul` | |
-| P8 PR Proposal (no PR, no merge) | Not started | |
+| P6 Brand / logo ("Ember Cascade") | Done | 4cbffae |
+| P7 Tests + CI green | Done — run 44526718080, all 5 jobs green | 5ff37d0 |
+| P8 PR Proposal (no PR, no merge) | Proposal posted to owner; waiting for explicit approval | |
 
 ## Next steps (exact)
 
-1. Wait for the latest CI run on `feat/ui-overhaul` (all five jobs). If an emulator job fails,
-   download `emulator-evidence-api<N>` and follow the rea root-cause method before changing code.
-2. Review the CI screenshots (home, music, playing, after-kill, night, day) for contrast and clipping.
-3. When every job is green, post the formal PR Proposal to the owner in chat. Do not open a PR,
-   do not merge. Wait for explicit approval.
-4. Version bump (e.g. 2.1.0 / code 8) is intentionally not done; ask the owner in the proposal.
+1. Wait for the owner's explicit approval of the PR Proposal. Do not open a PR or merge before it.
+2. On approval: open a PR `feat/ui-overhaul` -> `main` with the proposal text (footer line required
+   on GitHub), let CI run on the PR, then merge only if the owner asked for the merge too.
+3. Ask the owner whether to bump the version (suggested 2.1.0 / versionCode 8) before a release.
+4. Owner-only checks: `docs/OWNER-MANUAL-TESTS.md` section 9 (launcher icon, themed icon, TV).
 
 ## CI lessons (root causes, keep)
 
