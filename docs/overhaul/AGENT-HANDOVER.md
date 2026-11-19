@@ -7,19 +7,36 @@ overhaul. Update the "Progress" and "Next steps" sections after every push.
 
 | Phase | Status | Commit |
 |---|---|---|
-| P0 Audit, docs, handover | Done | (this commit) |
-| P1 Design system + greeting | Not started | |
-| P2 Top navigation + dock | Not started | |
-| P3 Home Jump back in + feed | Not started | |
-| P4 Global refresh | Not started | |
-| P5 Settings About credit | Not started | |
-| P6 Brand / logo | Not started | |
-| P7 Tests + CI green | Not started | |
+| P0 Audit, docs, handover | Done | 43f070c |
+| P1 Design system + greeting | Done | 5587b8f |
+| P2 Top navigation + dock | Done | 5587b8f |
+| P3 Home Jump back in + feed | Done | 5587b8f (UI test in the next commit) |
+| P4 Global refresh | Done (Now Playing, pill tabs, detail headers, chips) | see `git log` |
+| P5 Settings About credit | Done | 5587b8f |
+| P6 Brand / logo ("Ember Cascade") | Done | see `git log` |
+| P7 Tests + CI green | In progress — watch the latest run on `feat/ui-overhaul` | |
 | P8 PR Proposal (no PR, no merge) | Not started | |
 
 ## Next steps (exact)
 
-1. P1: see [02-phases.md](02-phases.md) and [01-architecture.md](01-architecture.md) §2–3.
+1. Wait for the latest CI run on `feat/ui-overhaul` (all five jobs). If an emulator job fails,
+   download `emulator-evidence-api<N>` and follow the rea root-cause method before changing code.
+2. Review the CI screenshots (home, music, playing, after-kill, night, day) for contrast and clipping.
+3. When every job is green, post the formal PR Proposal to the owner in chat. Do not open a PR,
+   do not merge. Wait for explicit approval.
+4. Version bump (e.g. 2.1.0 / code 8) is intentionally not done; ask the owner in the proposal.
+
+## Logo notes (P6)
+
+- Mark: a play triangle cut into three rising "sound steps" (video and music in one glyph),
+  amber `#FFC27A` -> `#FF8A4C` -> ember `#FF5A36`, on warm ink `#0E0B10`/`#2B2027` with a soft
+  ember glow. Colours live in `res/values/colors.xml` (`logo_*`).
+- Files (names unchanged, ADR-015): `ic_launcher_background/foreground/monochrome.xml`,
+  `ic_splash.xml` (ink disc so it reads on light and dark splash), `tv_banner.xml`,
+  `tv_banner_background.xml` (now 160x90dp, which also clears the old VectorRaster lint warning).
+- The geometry was generated from one script (play triangle (36,30)-(84,78) apex at y=54, three
+  segments, 4.5 gap, scale 0.8 around centre) and rendered at 48/216/324 px on light and dark
+  before committing.
 
 ## Key decisions (summary — details in 01-architecture.md)
 
