@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.automirrored.rounded.ViewList
@@ -22,8 +23,6 @@ import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -44,6 +43,7 @@ import com.mtplayer.app.data.media.VideoSort
 import com.mtplayer.app.data.media.sortedBy
 import com.mtplayer.app.data.prefs.VideoLayout
 import com.mtplayer.app.designsystem.components.ChoiceSheet
+import com.mtplayer.app.designsystem.components.HeaderAction
 import com.mtplayer.app.designsystem.components.MediaRow
 import com.mtplayer.app.designsystem.components.MessageState
 import com.mtplayer.app.designsystem.components.SectionHeader
@@ -70,13 +70,14 @@ fun VideosScreen() {
     val videos = remember(index, settings.videoSort) { index.videos.sortedBy(settings.videoSort) }
 
     Column(Modifier.fillMaxSize()) {
-        TopLevelBar(stringResource(R.string.tab_videos)) {
-            IconButton(onClick = { sortOpen = true }) { Icon(Icons.AutoMirrored.Rounded.Sort, stringResource(R.string.sort)) }
+        TopLevelBar(stringResource(R.string.tab_videos), overline = stringResource(R.string.overline_videos)) {
+            HeaderAction(Icons.AutoMirrored.Rounded.Sort, stringResource(R.string.sort), onClick = { sortOpen = true })
             val grid = settings.videoLayout == VideoLayout.GRID
-            IconButton(onClick = { vm.updateSettings { it.copy(videoLayout = if (grid) VideoLayout.LIST else VideoLayout.GRID) } }) {
-                Icon(if (grid) Icons.AutoMirrored.Rounded.ViewList else Icons.Rounded.GridView,
-                    stringResource(if (grid) R.string.show_as_list else R.string.show_as_grid))
-            }
+            HeaderAction(
+                if (grid) Icons.AutoMirrored.Rounded.ViewList else Icons.Rounded.GridView,
+                stringResource(if (grid) R.string.show_as_list else R.string.show_as_grid),
+                onClick = { vm.updateSettings { it.copy(videoLayout = if (grid) VideoLayout.LIST else VideoLayout.GRID) } },
+            )
         }
         if (index.videos.isEmpty()) {
             MessageState(Icons.Rounded.Movie, stringResource(R.string.no_videos_title), stringResource(R.string.no_videos_body),
@@ -141,9 +142,10 @@ private fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
         selected = selected,
         onClick = onClick,
         label = { Text(label) },
+        shape = CircleShape,
         colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-            selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            selectedContainerColor = MaterialTheme.colorScheme.primary,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
             labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
         ),
     )

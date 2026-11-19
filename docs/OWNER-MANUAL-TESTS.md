@@ -69,3 +69,18 @@ Mark each line with the device and Android version you used.
       token on GitHub, since 1.x APKs contained it.
 - [ ] Confirm the four signing secrets are still present and that you hold an offline backup of
       the release keystore.
+
+## 9. UI/UX overhaul (branch `feat/ui-overhaul`)
+
+- [ ] Home title greets by time of day (Good morning / afternoon / evening / night) and changes
+      after the hour boundary or when you return to the app.
+- [ ] "Jump back in" shows your last song and last unfinished video; tapping each resumes it.
+      "Shuffle all" and the "Videos" quick tile are gone.
+- [ ] Floating bottom dock: the mini player sits inside it, the selected tab is an accent pill,
+      nothing is hidden behind the gesture bar on your phone.
+- [ ] New launcher icon looks sharp on your launcher (circle, squircle or rounded square masks)
+      and the themed (monochrome) icon works on Android 13+.
+- [ ] Splash screen shows the new mark in light and dark mode.
+- [ ] Android TV: the banner shows the new mark; the side rail and pill tabs are reachable with
+      the D-pad and show a clear focus outline.
+- [ ] Settings > About shows "Made with love by Tawfik Estiak Zihad".

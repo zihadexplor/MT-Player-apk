@@ -1,24 +1,16 @@
 package com.mtplayer.app.feature.saved
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.TrendingUp
 import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.History
-import androidx.compose.material.icons.automirrored.rounded.TrendingUp
 import androidx.compose.material.icons.rounded.VideoLibrary
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,8 +25,10 @@ import com.mtplayer.app.R
 import com.mtplayer.app.data.media.Song
 import com.mtplayer.app.data.prefs.VideoLayout
 import com.mtplayer.app.designsystem.components.ConfirmDialog
+import com.mtplayer.app.designsystem.components.HeaderAction
 import com.mtplayer.app.designsystem.components.LocalMessenger
 import com.mtplayer.app.designsystem.components.MessageState
+import com.mtplayer.app.designsystem.components.PillTabs
 import com.mtplayer.app.feature.common.CountLine
 import com.mtplayer.app.feature.common.PlayShuffleRow
 import com.mtplayer.app.feature.common.TopLevelBar
@@ -66,25 +60,17 @@ fun SavedScreen() {
     val cleared = stringResource(R.string.history_cleared)
 
     Column(Modifier.fillMaxSize()) {
-        TopLevelBar(stringResource(R.string.tab_saved)) {
+        TopLevelBar(stringResource(R.string.tab_saved), overline = stringResource(R.string.overline_saved)) {
             if (tab in setOf(SavedTab.RECENT, SavedTab.MOST, SavedTab.WATCHED)) {
-                IconButton(onClick = { confirmClear = true }) { Icon(Icons.Rounded.DeleteSweep, stringResource(R.string.clear_history)) }
+                HeaderAction(Icons.Rounded.DeleteSweep, stringResource(R.string.clear_history), onClick = { confirmClear = true })
             }
         }
-        LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(SavedTab.entries, key = { it.name }) { t ->
-                FilterChip(
-                    selected = tab == t,
-                    onClick = { tab = t },
-                    label = { Text(stringResource(t.label)) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    ),
-                )
-            }
-        }
+        PillTabs(
+            labels = SavedTab.entries.map { stringResource(it.label) },
+            selected = SavedTab.entries.indexOf(tab),
+            onSelect = { tab = SavedTab.entries[it] },
+            modifier = Modifier.padding(bottom = 4.dp),
+        )
         when (tab) {
             SavedTab.FAV_SONGS -> SongCollection(favSongs, Icons.Rounded.FavoriteBorder, R.string.no_fav_songs_title, R.string.no_fav_songs_body)
             SavedTab.RECENT -> SongCollection(recent, Icons.Rounded.History, R.string.no_history_title, R.string.no_history_body)

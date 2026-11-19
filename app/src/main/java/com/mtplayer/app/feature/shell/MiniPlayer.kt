@@ -46,15 +46,15 @@ import com.mtplayer.app.designsystem.components.Artwork
 import com.mtplayer.app.designsystem.components.LocalMessenger
 import com.mtplayer.app.playback.PlayerConnection
 import com.mtplayer.app.playback.PlayerUiState
-import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlinx.coroutines.launch
 
 /**
  * Persistent mini player. Tap opens Now Playing; the close button (or a horizontal swipe)
  * stops playback, clears the queue and removes the notification.
  */
 @Composable
-fun MiniPlayer(state: PlayerUiState, player: PlayerConnection, onOpen: () -> Unit, modifier: Modifier = Modifier) {
+fun MiniPlayer(state: PlayerUiState, player: PlayerConnection, onOpen: () -> Unit, modifier: Modifier = Modifier, docked: Boolean = false) {
     val current = state.current ?: return
     val scheme = MaterialTheme.colorScheme
     val messenger = LocalMessenger.current
@@ -68,14 +68,15 @@ fun MiniPlayer(state: PlayerUiState, player: PlayerConnection, onOpen: () -> Uni
         messenger.show(stopped)
     }
 
+    // Docked: drawn inside the dock's container (no own surface). Standalone (tablet/TV): a floating card.
     Surface(
-        color = scheme.surfaceContainerHigh,
+        color = if (docked) androidx.compose.ui.graphics.Color.Transparent else scheme.surfaceContainer,
         contentColor = scheme.onSurface,
-        shape = MaterialTheme.shapes.large,
+        shape = if (docked) androidx.compose.ui.graphics.RectangleShape else MaterialTheme.shapes.large,
         tonalElevation = 0.dp,
-        shadowElevation = 6.dp,
+        shadowElevation = if (docked) 0.dp else 6.dp,
         modifier = modifier
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .padding(horizontal = if (docked) 0.dp else 12.dp, vertical = if (docked) 0.dp else 6.dp)
             .graphicsLayer {
                 translationX = offset.value
                 alpha = 1f - (abs(offset.value) / (dismissPx * 2)).coerceIn(0f, 0.7f)
@@ -100,7 +101,7 @@ fun MiniPlayer(state: PlayerUiState, player: PlayerConnection, onOpen: () -> Uni
             val progress = if (current.durationMs > 0) (ticks.first.toFloat() / current.durationMs).coerceIn(0f, 1f) else 0f
             Row(
                 Modifier.fillMaxWidth().clickable(role = Role.Button, onClickLabel = stringResource(R.string.open_now_playing), onClick = onOpen)
-                    .padding(start = 8.dp, end = 4.dp, top = 8.dp, bottom = 6.dp),
+                    .padding(start = 10.dp, end = 4.dp, top = 10.dp, bottom = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Artwork(current.artworkUri, null, Modifier.size(48.dp), shape = MaterialTheme.shapes.small, sizePx = 160)
@@ -129,7 +130,7 @@ fun MiniPlayer(state: PlayerUiState, player: PlayerConnection, onOpen: () -> Uni
                     progress = { progress },
                     modifier = Modifier.fillMaxWidth().height(3.dp).clip(MaterialTheme.shapes.extraSmall),
                     color = scheme.primary,
-                    trackColor = scheme.surfaceContainerHighest,
+                    trackColor = scheme.onSurface.copy(alpha = 0.10f),
                     drawStopIndicator = {},
                 )
             }

@@ -54,3 +54,24 @@ val MtTypography = Typography(
 
 /** Tabular figures so times do not jitter while playing. */
 val TabularNumbers = TextStyle(fontFeatureSettings = "tnum")
+
+/** Wide geometric display face (Unbounded, SIL OFL 1.1) for page and section titles only. */
+val Display = FontFamily(Font(R.font.unbounded_semibold, FontWeight.SemiBold))
+
+private fun display(size: Int, line: Int, tracking: Double = -0.02) = TextStyle(
+    fontFamily = Display,
+    fontWeight = FontWeight.SemiBold,
+    fontSize = size.sp,
+    lineHeight = line.sp,
+    letterSpacing = tracking.em,
+)
+
+/** Editorial styles of the Ember Night system: overline above a display title. */
+object MtType {
+    val PageTitle = display(24, 30)
+    val PageTitleCompact = display(20, 26)
+    val SectionTitle = display(17, 24, -0.01)
+    val HeroTitle = display(22, 28)
+    val Overline = style(11, 16, FontWeight.ExtraBold, 0.08)
+    val Eyebrow = style(10, 14, FontWeight.ExtraBold, 0.08)
+}

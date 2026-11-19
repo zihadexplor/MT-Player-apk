@@ -9,8 +9,10 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.mtplayer.app.feature.shell.MainActivity
 import com.mtplayer.app.playback.PlaybackService
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -24,11 +26,16 @@ import java.util.concurrent.TimeUnit
 /**
  * Verifies the media session and its notification on a real Android build: the notification must
  * appear, carry metadata, expose transport controls and follow track changes.
+ *
+ * The app's activity is kept visible for the whole test, as in real use: Android 15 "audio focus
+ * hardening" denies focus to a background app with no foreground service, which made this test
+ * depend on whatever the previous test left on screen.
  */
 @RunWith(AndroidJUnit4::class)
 class PlaybackSessionTest {
     private val ctx = TestSupport.context
     private lateinit var controller: MediaController
+    private var scenario: ActivityScenario<MainActivity>? = null
     private val main = android.os.Handler(android.os.Looper.getMainLooper())
 
     private fun <T> onMain(block: () -> T): T {
@@ -49,12 +56,14 @@ class PlaybackSessionTest {
 
     @Before fun setUp() {
         TestSupport.grantAll()
+        scenario = ActivityScenario.launch(MainActivity::class.java)
         val token = SessionToken(ctx, ComponentName(ctx, PlaybackService::class.java))
         controller = MediaController.Builder(ctx, token).setApplicationLooper(main.looper).buildAsync().get(20, TimeUnit.SECONDS)
     }
 
     @After fun tearDown() {
         onMain { controller.stop(); controller.clearMediaItems(); controller.release() }
+        scenario?.close()
     }
 
     @Test fun notificationAppearsWithMetadataControlsAndFollowsTrackChanges() {

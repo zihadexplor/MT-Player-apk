@@ -1,9 +1,9 @@
 package com.mtplayer.app.feature.music
 
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -20,12 +20,7 @@ import androidx.compose.material.icons.rounded.Category
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryScrollableTabRow
-import androidx.compose.material3.Tab
-import androidx.compose.material3.Text
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,8 +38,10 @@ import com.mtplayer.app.data.media.LibraryIndex
 import com.mtplayer.app.data.media.SongSort
 import com.mtplayer.app.data.media.sortedBy
 import com.mtplayer.app.designsystem.components.ChoiceSheet
+import com.mtplayer.app.designsystem.components.HeaderAction
 import com.mtplayer.app.designsystem.components.MediaRow
 import com.mtplayer.app.designsystem.components.MessageState
+import com.mtplayer.app.designsystem.components.PillTabs
 import com.mtplayer.app.designsystem.components.TileCard
 import com.mtplayer.app.feature.common.CountLine
 import com.mtplayer.app.feature.common.PlayShuffleRow
@@ -78,29 +75,19 @@ fun MusicScreen() {
     var newPlaylist by rememberSaveable { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize()) {
-        TopLevelBar(stringResource(R.string.tab_music)) {
+        TopLevelBar(stringResource(R.string.tab_music), overline = stringResource(R.string.overline_music)) {
             when (tabs[pager.currentPage]) {
-                MusicTab.SONGS -> IconButton(onClick = { sortOpen = true }) { Icon(Icons.AutoMirrored.Rounded.Sort, stringResource(R.string.sort)) }
-                MusicTab.PLAYLISTS -> IconButton(onClick = { newPlaylist = true }) { Icon(Icons.Rounded.Add, stringResource(R.string.new_playlist)) }
+                MusicTab.SONGS -> HeaderAction(Icons.AutoMirrored.Rounded.Sort, stringResource(R.string.sort), onClick = { sortOpen = true })
+                MusicTab.PLAYLISTS -> HeaderAction(Icons.Rounded.Add, stringResource(R.string.new_playlist), onClick = { newPlaylist = true })
                 else -> {}
             }
         }
-        PrimaryScrollableTabRow(
-            selectedTabIndex = pager.currentPage,
-            edgePadding = 12.dp,
-            containerColor = MaterialTheme.colorScheme.background,
-            contentColor = MaterialTheme.colorScheme.primary,
-        ) {
-            tabs.forEachIndexed { i, tab ->
-                Tab(
-                    selected = pager.currentPage == i,
-                    onClick = { scope.launch { pager.animateScrollToPage(i) } },
-                    text = { Text(stringResource(tab.label)) },
-                    selectedContentColor = MaterialTheme.colorScheme.primary,
-                    unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
+        PillTabs(
+            labels = tabs.map { stringResource(it.label) },
+            selected = pager.currentPage,
+            onSelect = { i -> scope.launch { pager.animateScrollToPage(i) } },
+            modifier = Modifier.padding(bottom = 4.dp),
+        )
         HorizontalPager(pager, Modifier.fillMaxSize(), beyondViewportPageCount = 0, key = { tabs[it].name }) { page ->
             when (tabs[page]) {
                 MusicTab.SONGS -> SongsTab(index, settings.songSort)

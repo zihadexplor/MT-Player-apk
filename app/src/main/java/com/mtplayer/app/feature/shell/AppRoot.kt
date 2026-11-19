@@ -7,29 +7,29 @@ import android.provider.Settings as AndroidSettings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bookmarks
+import androidx.compose.material.icons.rounded.Error
+import androidx.compose.material.icons.rounded.FolderOff
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Movie
-import androidx.compose.material.icons.rounded.Error
-import androidx.compose.material.icons.rounded.FolderOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.NavigationRailItemDefaults
@@ -42,11 +42,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
@@ -127,7 +129,7 @@ fun AppRoot(container: AppContainer, vm: AppViewModel, openPlayerRequest: Int) {
         val showBar = !fullScreen
         Row(Modifier.fillMaxSize()) {
             if (wide && showBar) {
-                NavigationRail(containerColor = MaterialTheme.colorScheme.surfaceContainerLow) {
+                NavigationRail(containerColor = MaterialTheme.colorScheme.surfaceContainerLow, header = { Spacer(Modifier.height(8.dp)) }) {
                     destinations.forEach { d ->
                         val selected = backStack?.destination?.route == d.route
                         NavigationRailItem(
@@ -136,8 +138,8 @@ fun AppRoot(container: AppContainer, vm: AppViewModel, openPlayerRequest: Int) {
                             icon = { Icon(d.icon, contentDescription = null) },
                             label = { Text(stringResource(d.label)) },
                             colors = NavigationRailItemDefaults.colors(
-                                selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                                indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
+                                selectedIconColor = MaterialTheme.colorScheme.primary,
+                                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
                                 selectedTextColor = MaterialTheme.colorScheme.onSurface,
                                 unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                 unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -153,35 +155,26 @@ fun AppRoot(container: AppContainer, vm: AppViewModel, openPlayerRequest: Int) {
                 snackbarHost = { MtSnackbarHost(snackbar) },
                 bottomBar = {
                     if (showBar) {
-                        Column {
+                        val miniPlayer: @Composable (Boolean) -> Unit = { docked ->
                             AnimatedVisibility(
                                 visible = playerState.hasMedia,
-                                enter = slideInVertically { it } + fadeIn(),
-                                exit = slideOutVertically { it } + fadeOut(),
+                                enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
+                                exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
                             ) {
-                                MiniPlayer(playerState, container.player, onOpen = navigator::player,
-                                    modifier = if (wide) Modifier.navigationBarsPadding() else Modifier)
+                                MiniPlayer(playerState, container.player, onOpen = navigator::player, docked = docked,
+                                    modifier = if (docked) Modifier else Modifier.navigationBarsPadding())
                             }
-                            if (!wide) {
-                                NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainerLow) {
-                                    destinations.forEach { d ->
-                                        val selected = backStack?.destination?.route == d.route
-                                        NavigationBarItem(
-                                            selected = selected,
-                                            onClick = { navigator.top(d.route) },
-                                            icon = { Icon(d.icon, contentDescription = null) },
-                                            label = { Text(stringResource(d.label)) },
-                                            colors = NavigationBarItemDefaults.colors(
-                                                selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                                                indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
-                                                selectedTextColor = MaterialTheme.colorScheme.onSurface,
-                                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            ),
-                                        )
-                                    }
-                                }
-                            }
+                        }
+                        if (wide) {
+                            miniPlayer(false)
+                        } else {
+                            Dock(
+                                items = destinations.map { DockItem(it.route, stringResource(it.label), it.icon) },
+                                selectedRoute = backStack?.destination?.route,
+                                onSelect = navigator::top,
+                                modifier = Modifier.navigationBarsPadding(),
+                                top = { miniPlayer(true) },
+                            )
                         }
                     }
                 },

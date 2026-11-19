@@ -9,6 +9,13 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performScrollTo
+import com.mtplayer.app.designsystem.components.DayPart
+import com.mtplayer.app.designsystem.components.Greeting
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
@@ -151,6 +158,33 @@ class AppUiTest {
         // Folders view lists the Movies folder.
         rule.onAllNodesWithText(s(R.string.tab_folders)).onFirst().performClick()
         rule.waitUntilAtLeastOneExists(hasText("Movies"), 5_000)
+    }
+
+    @Test fun d_homeGreetingJumpBackInAndAboutCredit() {
+        rule.onAllNodesWithText(s(R.string.tab_home)).onFirst().performClick()
+        // Top bar: the time-based greeting (allow the hour to roll over while the test runs).
+        val greetings = DayPart.entries.map { s(it.greeting) }
+        rule.waitUntilAtLeastOneExists(hasText(s(R.string.jump_back_in)), 10_000)
+        val shown = greetings.filter { rule.onAllNodesWithText(it).fetchSemanticsNodes().isNotEmpty() }
+        assertEquals("exactly one greeting in the top bar", 1, shown.size)
+        assertTrue(shown.single() in listOf(s(Greeting.now().greeting), s(Greeting.dayPartFor((java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY) + 23) % 24).greeting)))
+        // The old quick tiles are gone; both Jump back in cards are present.
+        assertTrue(rule.onAllNodesWithText("Shuffle all").fetchSemanticsNodes().isEmpty())
+        rule.onNodeWithTag("home_continue_music").assertExists()
+        rule.onNodeWithTag("home_continue_video").assertExists()
+        if (TestSupport.mediaStoreHas(TONE_ONE, video = false)) {
+            // b_ played the CI tones, so the music card names one of them.
+            rule.waitUntil(10_000) {
+                // The card is clickable, so its texts are merged into the card node itself.
+                rule.onAllNodes(hasTestTag("home_continue_music") and (hasText(TONE_ONE, substring = true) or hasText(TONE_TWO, substring = true)))
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+        }
+        // Settings > About shows the credit line.
+        rule.onAllNodesWithContentDescription(s(R.string.settings)).onFirst().performClick()
+        rule.waitUntilAtLeastOneExists(hasText(s(R.string.theme)), 5_000)
+        rule.onNodeWithTag("about_credit").performScrollTo().assertIsDisplayed().assertTextEquals("Made with love by Tawfik Estiak Zihad")
+        rule.onNodeWithContentDescription(s(R.string.back)).performClick()
     }
 
     companion object {

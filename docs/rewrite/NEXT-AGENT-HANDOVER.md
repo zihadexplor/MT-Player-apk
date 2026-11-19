@@ -1,3 +1,5 @@
+> **Overhaul in progress on `feat/ui-overhaul`. Read [../overhaul/AGENT-HANDOVER.md](../overhaul/AGENT-HANDOVER.md) first.**
+
 # Next-agent handover — MT Player 2 rewrite
 
 Keep this file current. Update it in every push so work can resume immediately after a crash

@@ -25,8 +25,6 @@ import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.RemoveCircleOutline
 import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material.icons.rounded.VisibilityOff
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -51,11 +49,13 @@ import com.mtplayer.app.data.media.Song
 import com.mtplayer.app.designsystem.components.ActionSheet
 import com.mtplayer.app.designsystem.components.Artwork
 import com.mtplayer.app.designsystem.components.ConfirmDialog
+import com.mtplayer.app.designsystem.components.HeaderAction
 import com.mtplayer.app.designsystem.components.LocalMessenger
 import com.mtplayer.app.designsystem.components.MessageState
 import com.mtplayer.app.designsystem.components.SectionHeader
 import com.mtplayer.app.designsystem.components.SheetAction
 import com.mtplayer.app.designsystem.components.TileCard
+import com.mtplayer.app.designsystem.theme.MtType
 import com.mtplayer.app.feature.common.DetailBar
 import com.mtplayer.app.feature.common.PlayShuffleRow
 import com.mtplayer.app.feature.common.favoriteSongIds
@@ -84,7 +84,7 @@ private fun CollectionHeader(artwork: Any?, title: String, lines: List<String>, 
         Artwork(artwork, null, Modifier.size(128.dp), shape = MaterialTheme.shapes.large, fallbackIcon = icon, iconSize = 48.dp, sizePx = 384)
         Spacer(Modifier.width(18.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurface, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            Text(title, style = MtType.HeroTitle, color = MaterialTheme.colorScheme.onSurface, maxLines = 3, overflow = TextOverflow.Ellipsis)
             lines.filter { it.isNotBlank() }.forEach {
                 Spacer(Modifier.height(2.dp))
                 Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -98,7 +98,7 @@ private fun SongCollectionScreen(
     title: String,
     songs: List<Song>,
     header: @Composable () -> Unit,
-    barActions: @Composable () -> Unit = {},
+    barActions: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {},
     subtitle: ((Song) -> String)? = null,
     extra: (androidx.compose.foundation.lazy.LazyListScope.() -> Unit)? = null,
 ) {
@@ -190,11 +190,11 @@ fun FolderScreen(path: String) {
         title = folder.name,
         songs = folder.songs,
         barActions = {
-            IconButton(onClick = {
+            HeaderAction(Icons.Rounded.VisibilityOff, stringResource(R.string.hide_folder), onClick = {
                 vm.hideFolder(folder.path, MediaType.SONG)
                 messenger.show(hidden, undo) { vm.unhideFolder(folder.path, MediaType.SONG) }
                 nav.back()
-            }) { Icon(Icons.Rounded.VisibilityOff, stringResource(R.string.hide_folder)) }
+            })
         },
         header = {
             CollectionHeader(null, folder.name, listOf(folder.path, pluralStringResource(R.plurals.song_count, folder.songs.size, folder.songs.size)), Icons.Rounded.Folder)
@@ -244,7 +244,7 @@ fun PlaylistScreen(id: Long) {
 
     Column(Modifier.fillMaxSize()) {
         DetailBar(p.name) {
-            IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, stringResource(R.string.more_options_for, p.name)) }
+            HeaderAction(Icons.Rounded.MoreVert, stringResource(R.string.more_options_for, p.name), onClick = { menu = true })
         }
         if (songs.isEmpty()) {
             MessageState(Icons.AutoMirrored.Rounded.QueueMusic, stringResource(R.string.empty_playlist_title),

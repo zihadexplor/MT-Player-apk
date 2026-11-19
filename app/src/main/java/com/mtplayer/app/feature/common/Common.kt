@@ -1,14 +1,16 @@
 package com.mtplayer.app.feature.common
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material.icons.Icons
@@ -18,71 +20,88 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mtplayer.app.R
 import com.mtplayer.app.core.Format
 import com.mtplayer.app.data.media.Song
+import com.mtplayer.app.designsystem.components.HeaderAction
 import com.mtplayer.app.designsystem.components.MediaRow
+import com.mtplayer.app.designsystem.components.Overline
+import com.mtplayer.app.designsystem.theme.MtType
 import com.mtplayer.app.feature.shell.LocalAppViewModel
 import com.mtplayer.app.feature.shell.LocalContainer
 import com.mtplayer.app.feature.shell.LocalMediaActions
 import com.mtplayer.app.feature.shell.LocalNavigator
 
 /** Header for the four top-level destinations, with Search and Settings entry points. */
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Top bar of the main tabs: an accent overline above a large display title, with the page's
+ * actions and Search / Settings as separate header tiles. Uses a compact title under 380dp.
+ */
 @Composable
-fun TopLevelBar(title: String, actions: @Composable () -> Unit = {}) {
+fun TopLevelBar(title: String, overline: String? = null, actions: @Composable RowScope.() -> Unit = {}) {
     val nav = LocalNavigator.current
-    TopAppBar(
-        title = { Text(title, style = MaterialTheme.typography.headlineSmall, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        actions = {
-            actions()
-            IconButton(onClick = nav::search) { Icon(Icons.Rounded.Search, stringResource(R.string.search)) }
-            IconButton(onClick = nav::settings) { Icon(Icons.Rounded.Settings, stringResource(R.string.settings)) }
-        },
-        windowInsets = WindowInsets.statusBars,
-        colors = barColors(),
-    )
+    val compact = LocalConfiguration.current.screenWidthDp < 380
+    Row(
+        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).statusBarsPadding()
+            .padding(start = 16.dp, end = 8.dp, top = 10.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f).semantics(mergeDescendants = true) { heading() }) {
+            if (overline != null) {
+                Overline(overline)
+                Spacer(Modifier.height(2.dp))
+            }
+            Text(
+                title,
+                style = if (compact) MtType.PageTitleCompact else MtType.PageTitle,
+                color = MaterialTheme.colorScheme.onBackground,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        actions()
+        HeaderAction(Icons.Rounded.Search, stringResource(R.string.search), onClick = nav::search)
+        HeaderAction(Icons.Rounded.Settings, stringResource(R.string.settings), onClick = nav::settings)
+    }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** Top bar of sub-pages: a back tile, the title and optional header tiles. */
 @Composable
-fun DetailBar(title: String, actions: @Composable () -> Unit = {}) {
+fun DetailBar(title: String, actions: @Composable RowScope.() -> Unit = {}) {
     val nav = LocalNavigator.current
-    TopAppBar(
-        title = { Text(title, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        navigationIcon = {
-            IconButton(onClick = nav::back) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.back)) }
-        },
-        actions = { actions() },
-        windowInsets = WindowInsets.statusBars,
-        colors = barColors(),
-    )
+    Row(
+        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).statusBarsPadding()
+            .padding(start = 8.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        HeaderAction(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.back), onClick = nav::back)
+        Spacer(Modifier.width(8.dp))
+        Text(
+            title,
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onBackground,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f).semantics { heading() },
+        )
+        actions()
+    }
 }
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun barColors() = TopAppBarDefaults.topAppBarColors(
-    containerColor = MaterialTheme.colorScheme.background,
-    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-    titleContentColor = MaterialTheme.colorScheme.onBackground,
-    navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
-    actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-)
 
 /** "Play" + "Shuffle" pair shown above song collections. */
 @Composable
