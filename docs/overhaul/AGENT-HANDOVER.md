@@ -17,6 +17,31 @@ overhaul. Update the "Progress" and "Next steps" sections after every push.
 | P7 Tests + CI green | Done — run 44526718080, all 5 jobs green | 5ff37d0 |
 | P8 PR Proposal | Owner approved; PR #6 merged (e076aa6); v2.1.0 (code 8) released | e076aa6 |
 
+## Bug-fix round after v2.1.0 (branch `fix/player-nav-logo`)
+
+Owner reported 4 bugs. Root causes and fixes (do not regress):
+
+1. Logo colours did not match the app: the mark used #FFC27A→#FF5A36 on a plum ink. Now
+   `res/values/colors.xml` logo_* = Ember primary #FFA764 → #E5763A → #C4521C on Ink100
+   #121013 / #2A2326; glows use #FFA764; `Tide.BrandAmber/BrandEmber` match.
+2. Now Playing open/close broke the UI: it was a NavHost route, and opening it hid the dock, so
+   the Scaffold padding jumped mid-transition. Now it is an overlay (`NowPlayingOverlay` in
+   AppRoot) drawn above the whole shell; the dock never changes. Slide up 340 ms emphasized /
+   down 260 ms; fade only with reduced motion. State: `Navigator.isPlayerOpen` (saveable).
+   The overlay's BackHandler must live inside the AnimatedVisibility content: one composed at
+   app start loses to NavHost's back callback (CI run 44539176838 caught this).
+3. Home tab from Settings stayed on Settings: `top()` used `popUpTo(HOME){saveState}` +
+   `restoreState=true`, so Settings was saved as Home's state and restored. Now `top()` pops
+   global screens (`Routes.global`) first and never restores state for HOME. Covered by
+   `NavigatorTest` (Robolectric, failed before the fix).
+4. Taps on Now Playing reached the screen below (started other songs): the overlay root
+   consumes every pointer event its children do not. Covered by androidTest
+   `e_settingsToHomeAndNowPlayingBlocksTouches`.
+
+Status: commits 2 on `fix/player-nav-logo`; CI run 44541588552 all 5 jobs green (API 29/34/35 +
+update over v1.3.0). PR proposal presented; waiting for owner approval. Rules: no PR/merge until
+the owner approves. On merge the Release workflow patch-bumps to v2.1.1 (fix: commits).
+
 ## Next steps (exact)
 
 1. Overhaul complete: PR #6 merged, release v2.1.0 published by the Release workflow

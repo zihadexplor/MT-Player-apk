@@ -84,3 +84,13 @@ Mark each line with the device and Android version you used.
 - [ ] Android TV: the banner shows the new mark; the side rail and pill tabs are reachable with
       the D-pad and show a clear focus outline.
 - [ ] Settings > About shows "Made with love by Tawfik Estiak Zihad".
+
+## 10. Bug fixes after v2.1.0 (branch `fix/player-nav-logo`)
+
+- [ ] Launcher icon, splash and TV banner use the same orange as the app buttons (no pink/red cast).
+- [ ] Play a song, tap the mini player: Now Playing slides up smoothly over the dock; close it
+      (down arrow, swipe-back gesture or back button): it slides down, nothing jumps or flickers.
+- [ ] Open Settings, tap Home in the dock: Home opens. Repeat from Search and Equalizer.
+- [ ] In Now Playing tap empty areas (artwork, around the title): nothing else starts playing
+      and the screen does not change.
+
