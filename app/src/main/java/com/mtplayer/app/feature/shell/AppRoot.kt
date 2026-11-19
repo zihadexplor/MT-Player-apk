@@ -238,7 +238,6 @@ private fun NowPlayingOverlay(visible: Boolean, onClose: () -> Unit) {
     val reduced = reducedMotion()
     val enterSpec = tween<IntOffset>(durationMillis = 340, easing = FastOutSlowInEasing)
     val exitSpec = tween<IntOffset>(durationMillis = 260, easing = FastOutLinearInEasing)
-    BackHandler(enabled = visible, onBack = onClose)
     AnimatedVisibility(
         visible = visible,
         enter = if (reduced) fadeIn(tween(180)) else slideInVertically(enterSpec) { it } + fadeIn(tween(200)),
@@ -256,6 +255,9 @@ private fun NowPlayingOverlay(visible: Boolean, onClose: () -> Unit) {
                     }
                 },
         ) {
+            // Registered when the overlay appears, so it outranks NavHost's back callback; the
+            // lyrics handler inside NowPlayingScreen is registered later and still wins first.
+            BackHandler(enabled = visible, onBack = onClose)
             NowPlayingScreen()
         }
     }

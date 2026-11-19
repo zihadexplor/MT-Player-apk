@@ -28,6 +28,8 @@ Owner reported 4 bugs. Root causes and fixes (do not regress):
    the Scaffold padding jumped mid-transition. Now it is an overlay (`NowPlayingOverlay` in
    AppRoot) drawn above the whole shell; the dock never changes. Slide up 340 ms emphasized /
    down 260 ms; fade only with reduced motion. State: `Navigator.isPlayerOpen` (saveable).
+   The overlay's BackHandler must live inside the AnimatedVisibility content: one composed at
+   app start loses to NavHost's back callback (CI run 44539176838 caught this).
 3. Home tab from Settings stayed on Settings: `top()` used `popUpTo(HOME){saveState}` +
    `restoreState=true`, so Settings was saved as Home's state and restored. Now `top()` pops
    global screens (`Routes.global`) first and never restores state for HOME. Covered by
