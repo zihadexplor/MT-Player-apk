@@ -31,8 +31,10 @@ overhaul. Update the "Progress" and "Next steps" sections after every push.
 - Clickable Compose cards merge their texts into the card node: match with
   `hasTestTag(..) and hasText(.., substring = true)`, not `hasAnyDescendant(hasText(..))`.
 - Android 15 "audio focus hardening" denies focus to a backgrounded app. If an AppUiTest fails and
-  closes its activity, the next `PlaybackSessionTest` can fail with "player did not start"; fix the
-  first failure, do not touch playback code for that symptom.
+  closes its activity, the next `PlaybackSessionTest` can fail with "player did not start". Root
+  fix (commit "test(playback): keep activity visible"): `PlaybackSessionTest` launches
+  `MainActivity` for the whole test, as real playback always starts from a visible UI or a media
+  button (FGS). Do not change playback code for that symptom.
 
 ## Logo notes (P6)
 
