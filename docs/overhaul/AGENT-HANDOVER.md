@@ -38,7 +38,9 @@ Owner reported 4 bugs. Root causes and fixes (do not regress):
    consumes every pointer event its children do not. Covered by androidTest
    `e_settingsToHomeAndNowPlayingBlocksTouches`.
 
-Rules: no PR/merge until the owner approves the PR proposal.
+Status: commits 2 on `fix/player-nav-logo`; CI run 44541588552 all 5 jobs green (API 29/34/35 +
+update over v1.3.0). PR proposal presented; waiting for owner approval. Rules: no PR/merge until
+the owner approves. On merge the Release workflow patch-bumps to v2.1.1 (fix: commits).
 
 ## Next steps (exact)
 
