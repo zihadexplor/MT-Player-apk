@@ -62,8 +62,8 @@ internal object Tide {
     val OnLagoonContainerLight = Color(0xFF00201A)
 
     // Brand gradient (logo, accent fills). Amber -> ember.
-    val BrandAmber = Color(0xFFFFB45E)
-    val BrandEmber = Color(0xFFFF6A3D)
+    val BrandAmber = Color(0xFFFFA764)
+    val BrandEmber = Color(0xFFC4521C)
 
     // Status
     val ErrorDark = Color(0xFFFF8A80)

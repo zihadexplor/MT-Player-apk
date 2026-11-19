@@ -1,32 +1,40 @@
 package com.mtplayer.app
 
 import android.app.NotificationManager
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
-import androidx.compose.ui.test.hasContentDescription
-import androidx.compose.ui.test.hasSetTextAction
-import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.click
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
-import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performScrollTo
-import com.mtplayer.app.designsystem.components.DayPart
-import com.mtplayer.app.designsystem.components.Greeting
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.mtplayer.app.data.prefs.VideoLayout
+import com.mtplayer.app.designsystem.components.DayPart
+import com.mtplayer.app.designsystem.components.Greeting
+import com.mtplayer.app.designsystem.theme.ThemeMode
 import com.mtplayer.app.feature.shell.MainActivity
 import com.mtplayer.app.playback.PlaybackService
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
@@ -36,9 +44,6 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.MethodSorters
-import kotlinx.coroutines.runBlocking
-import com.mtplayer.app.designsystem.theme.ThemeMode
-import com.mtplayer.app.data.prefs.VideoLayout
 
 /**
  * End-to-end UI checks on the real app. Tests that need media use files that CI pushes to
@@ -185,6 +190,45 @@ class AppUiTest {
         rule.waitUntilAtLeastOneExists(hasText(s(R.string.theme)), 5_000)
         rule.onNodeWithTag("about_credit").performScrollTo().assertIsDisplayed().assertTextEquals("Made with love by Tawfik Estiak Zihad")
         rule.onNodeWithContentDescription(s(R.string.back)).performClick()
+    }
+
+    @Test fun e_settingsToHomeAndNowPlayingBlocksTouches() {
+        // A dock tab leaves Settings (regression: Home used to restore Settings).
+        rule.onAllNodesWithContentDescription(s(R.string.settings)).onFirst().performClick()
+        rule.waitUntilAtLeastOneExists(hasText(s(R.string.theme)), 5_000)
+        rule.onAllNodesWithText(s(R.string.tab_home)).onFirst().performClick()
+        rule.waitUntilDoesNotExist(hasText(s(R.string.theme)), 5_000)
+        rule.onNodeWithTag("home_list").assertExists()
+
+        assumeTrue("CI media not present", TestSupport.mediaStoreHas(TONE_ONE, video = false))
+        rule.onAllNodesWithText(s(R.string.tab_music)).onFirst().performClick()
+        rule.waitUntilAtLeastOneExists(hasText(TONE_ONE), 20_000)
+        rule.onAllNodesWithText(TONE_ONE).onFirst().performClick()
+        assertTrue(TestSupport.waitUntil(15_000) { app.container.player.state.value.current?.title == TONE_ONE })
+
+        val openLabel = s(R.string.open_now_playing)
+        val miniPlayer = SemanticsMatcher("opens Now Playing") { it.config.getOrNull(SemanticsActions.OnClick)?.label == openLabel }
+        rule.waitUntilAtLeastOneExists(miniPlayer, 10_000)
+        rule.onNode(miniPlayer).performClick()
+        rule.waitUntilAtLeastOneExists(hasTestTag("now_playing"), 5_000)
+        rule.waitForIdle()
+
+        // Taps on empty parts of Now Playing must not reach the song list underneath.
+        val overlay = rule.onNodeWithTag("now_playing")
+        for (y in listOf(0.30f, 0.45f, 0.55f)) {
+            overlay.performTouchInput { click(Offset(width * 0.5f, height * y)) }
+            rule.waitForIdle()
+        }
+        Thread.sleep(500)
+        assertEquals(TONE_ONE, app.container.player.state.value.current?.title)
+        overlay.assertExists()
+
+        // System back closes Now Playing and returns to the same tab.
+        rule.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+        rule.waitUntilDoesNotExist(hasTestTag("now_playing"), 5_000)
+        rule.onAllNodesWithText(TONE_ONE).onFirst().assertExists()
+        rule.onNodeWithContentDescription(s(R.string.close_player)).performClick()
+        assertTrue(TestSupport.waitUntil(5_000) { !app.container.player.state.value.isPlaying })
     }
 
     companion object {

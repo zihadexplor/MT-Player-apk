@@ -13,7 +13,7 @@
     <path android:pathData="M54,54m-34,0a34,34 0,1 1,68 0a34,34 0,1 1,-68 0">
         <aapt:attr name="android:fillColor">
             <gradient android:type="radial" android:centerX="56" android:centerY="54" android:gradientRadius="34"
-                android:startColor="#38FF6A3D" android:endColor="#00FF6A3D" />
+                android:startColor="#2EFFA764" android:endColor="#00FFA764" />
         </aapt:attr>
     </path>
     <path android:strokeWidth="2.10" android:strokeLineJoin="round" android:pathData="M40.00,37.20L49.10,41.75L49.10,66.25L40.00,70.80Z">

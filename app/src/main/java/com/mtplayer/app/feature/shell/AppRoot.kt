@@ -4,9 +4,13 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings as AndroidSettings
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -40,14 +44,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -67,6 +76,7 @@ import com.mtplayer.app.designsystem.components.LocalMessenger
 import com.mtplayer.app.designsystem.components.MessageState
 import com.mtplayer.app.designsystem.components.Messenger
 import com.mtplayer.app.designsystem.components.MtSnackbarHost
+import com.mtplayer.app.designsystem.components.reducedMotion
 import com.mtplayer.app.feature.detail.AlbumScreen
 import com.mtplayer.app.feature.detail.ArtistScreen
 import com.mtplayer.app.feature.detail.FolderScreen
@@ -96,7 +106,8 @@ private val destinations = listOf(
 @Composable
 fun AppRoot(container: AppContainer, vm: AppViewModel, openPlayerRequest: Int) {
     val navController = rememberNavController()
-    val navigator = remember(navController) { Navigator(navController) }
+    val playerOpen = rememberSaveable { mutableStateOf(false) }
+    val navigator = remember(navController) { Navigator(navController, playerOpen) }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val messenger = remember(snackbar) { Messenger(snackbar, scope) }
@@ -104,7 +115,6 @@ fun AppRoot(container: AppContainer, vm: AppViewModel, openPlayerRequest: Int) {
     val playerState by container.player.state.collectAsStateWithLifecycle()
     val library by vm.library.collectAsStateWithLifecycle()
     val backStack by navController.currentBackStackEntryAsState()
-    val route = backStack?.destination?.route
     val wide = LocalConfiguration.current.screenWidthDp >= 600
     val context = LocalContext.current
 
@@ -125,10 +135,9 @@ fun AppRoot(container: AppContainer, vm: AppViewModel, openPlayerRequest: Int) {
         LocalMessenger provides messenger,
         LocalMediaActions provides actions,
     ) {
-        val fullScreen = route in Routes.fullScreen
-        val showBar = !fullScreen
+        Box(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxSize()) {
-            if (wide && showBar) {
+            if (wide) {
                 NavigationRail(containerColor = MaterialTheme.colorScheme.surfaceContainerLow, header = { Spacer(Modifier.height(8.dp)) }) {
                     destinations.forEach { d ->
                         val selected = backStack?.destination?.route == d.route
@@ -154,7 +163,7 @@ fun AppRoot(container: AppContainer, vm: AppViewModel, openPlayerRequest: Int) {
                 contentWindowInsets = WindowInsets(0),
                 snackbarHost = { MtSnackbarHost(snackbar) },
                 bottomBar = {
-                    if (showBar) {
+                    run {
                         val miniPlayer: @Composable (Boolean) -> Unit = { docked ->
                             AnimatedVisibility(
                                 visible = playerState.hasMedia,
@@ -186,6 +195,10 @@ fun AppRoot(container: AppContainer, vm: AppViewModel, openPlayerRequest: Int) {
                 }
             }
         }
+        // Now Playing sits above the whole shell (dock included), so opening and closing it never
+        // resizes the screen underneath.
+        NowPlayingOverlay(visible = playerOpen.value, onClose = navigator::closePlayer)
+        }
         MediaActionsHost(actions)
         UpdatePrompt()
     }
@@ -202,12 +215,6 @@ private fun AppNavHost(navController: androidx.navigation.NavHostController) {
         composable(Routes.SETTINGS) { SettingsScreen() }
         composable(Routes.HIDDEN) { HiddenFoldersScreen() }
         composable(Routes.EQUALIZER) { EqualizerScreen() }
-        composable(
-            Routes.PLAYER,
-            enterTransition = { slideInVertically { it } },
-            exitTransition = { fadeOut() },
-            popExitTransition = { slideOutVertically { it } },
-        ) { NowPlayingScreen() }
         composable(Routes.ALBUM, listOf(navArgument("id") { type = NavType.LongType })) {
             AlbumScreen(it.arguments?.getLong("id") ?: -1)
         }
@@ -218,6 +225,39 @@ private fun AppNavHost(navController: androidx.navigation.NavHostController) {
             PlaylistScreen(it.arguments?.getLong("id") ?: -1)
         }
         composable(Routes.VIDEO_FOLDER) { VideoFolderScreen(Uri.decode(it.arguments?.getString("path").orEmpty())) }
+    }
+}
+
+/**
+ * Full-screen Now Playing layer. It slides up from the dock with a short emphasized curve (fade
+ * only under reduced motion), and swallows every touch that its controls do not handle, so taps
+ * on empty areas can never reach the screen underneath.
+ */
+@Composable
+private fun NowPlayingOverlay(visible: Boolean, onClose: () -> Unit) {
+    val reduced = reducedMotion()
+    val enterSpec = tween<IntOffset>(durationMillis = 340, easing = FastOutSlowInEasing)
+    val exitSpec = tween<IntOffset>(durationMillis = 260, easing = FastOutLinearInEasing)
+    BackHandler(enabled = visible, onBack = onClose)
+    AnimatedVisibility(
+        visible = visible,
+        enter = if (reduced) fadeIn(tween(180)) else slideInVertically(enterSpec) { it } + fadeIn(tween(200)),
+        exit = if (reduced) fadeOut(tween(160)) else slideOutVertically(exitSpec) { it } + fadeOut(tween(220, delayMillis = 60)),
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .testTag("now_playing")
+                .pointerInput(Unit) {
+                    // Children (buttons, slider, lyrics) see events first; anything left is consumed here.
+                    awaitPointerEventScope {
+                        while (true) awaitPointerEvent().changes.forEach { it.consume() }
+                    }
+                },
+        ) {
+            NowPlayingScreen()
+        }
     }
 }
 

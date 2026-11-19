@@ -143,7 +143,7 @@ fun NowPlayingScreen() {
     ) {
         if (current == null) {
             Column {
-                IconButton(onClick = nav::back, modifier = Modifier.padding(4.dp)) { Icon(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.close)) }
+                IconButton(onClick = nav::closePlayer, modifier = Modifier.padding(4.dp)) { Icon(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.close)) }
                 MessageState(Icons.Rounded.MusicNote, stringResource(R.string.nothing_playing_title), stringResource(R.string.nothing_playing_body))
             }
             return@Box
@@ -167,7 +167,7 @@ fun NowPlayingScreen() {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val wide = maxWidth > maxHeight && maxWidth >= 560.dp
             Column(Modifier.fillMaxSize()) {
-                TopRow(onClose = nav::back, onMenu = { sheet = Sheet.MENU }, sourceLabel = current.album)
+                TopRow(onClose = nav::closePlayer, onMenu = { sheet = Sheet.MENU }, sourceLabel = current.album)
                 if (wide) {
                     Row(Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.weight(1f).fillMaxSize(), contentAlignment = Alignment.Center) {
