@@ -15,15 +15,15 @@ overhaul. Update the "Progress" and "Next steps" sections after every push.
 | P5 Settings About credit | Done | 5587b8f |
 | P6 Brand / logo ("Ember Cascade") | Done | 4cbffae |
 | P7 Tests + CI green | Done — run 44526718080, all 5 jobs green | 5ff37d0 |
-| P8 PR Proposal (no PR, no merge) | Proposal posted to owner; waiting for explicit approval | |
+| P8 PR Proposal | Owner approved; PR #6 merged (e076aa6); v2.1.0 (code 8) released | e076aa6 |
 
 ## Next steps (exact)
 
-1. Wait for the owner's explicit approval of the PR Proposal. Do not open a PR or merge before it.
-2. On approval: open a PR `feat/ui-overhaul` -> `main` with the proposal text (footer line required
-   on GitHub), let CI run on the PR, then merge only if the owner asked for the merge too.
-3. Ask the owner whether to bump the version (suggested 2.1.0 / versionCode 8) before a release.
-4. Owner-only checks: `docs/OWNER-MANUAL-TESTS.md` section 9 (launcher icon, themed icon, TV).
+1. Overhaul complete: PR #6 merged, release v2.1.0 published by the Release workflow
+   (https://github.com/zihadexplor/MT-Player-apk/releases/tag/v2.1.0).
+2. Owner-only: run `docs/OWNER-MANUAL-TESTS.md` section 9 on real devices; delete the old
+   `MT_UPDATER_TOKEN` secret if it still exists.
+3. Optional maintenance: `actions/setup-java@v4` is deprecated in the Release workflow (warning only).
 
 ## CI lessons (root causes, keep)
 
