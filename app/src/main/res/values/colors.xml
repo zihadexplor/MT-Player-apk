@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Only used before Compose draws (window/splash). Compose colours live in designsystem/theme. -->
-    <color name="window_background">#FFFAFAFC</color>
-    <color name="logo_start">#FFFF7A45</color>
-    <color name="logo_end">#FF7C5CFF</color>
-    <color name="logo_mark">#FFFFFFFF</color>
+    <color name="window_background">#FFFBF8F5</color>
+    <color name="logo_start">#FFFFC27A</color>
+    <color name="logo_mid">#FFFF8A4C</color>
+    <color name="logo_end">#FFFF5A36</color>
+    <color name="logo_ink">#FF0E0B10</color>
+    <color name="logo_ink_light">#FF2B2027</color>
     <color name="video_background">#FF000000</color>
 </resources>

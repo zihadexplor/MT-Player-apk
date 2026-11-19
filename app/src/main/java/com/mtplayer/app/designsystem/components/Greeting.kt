@@ -12,8 +12,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import com.mtplayer.app.R
-import kotlinx.coroutines.delay
 import java.util.Calendar
+import kotlinx.coroutines.delay
 
 /** Part of the day used by the time-based greeting in the Home top bar. */
 enum class DayPart(@StringRes val greeting: Int) {

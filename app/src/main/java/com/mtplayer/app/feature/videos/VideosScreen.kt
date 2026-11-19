@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.automirrored.rounded.ViewList
@@ -22,8 +23,6 @@ import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,12 +38,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mtplayer.app.R
-import com.mtplayer.app.designsystem.components.HeaderAction
 import com.mtplayer.app.data.media.Video
 import com.mtplayer.app.data.media.VideoSort
 import com.mtplayer.app.data.media.sortedBy
 import com.mtplayer.app.data.prefs.VideoLayout
 import com.mtplayer.app.designsystem.components.ChoiceSheet
+import com.mtplayer.app.designsystem.components.HeaderAction
 import com.mtplayer.app.designsystem.components.MediaRow
 import com.mtplayer.app.designsystem.components.MessageState
 import com.mtplayer.app.designsystem.components.SectionHeader
@@ -143,9 +142,10 @@ private fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
         selected = selected,
         onClick = onClick,
         label = { Text(label) },
+        shape = CircleShape,
         colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-            selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            selectedContainerColor = MaterialTheme.colorScheme.primary,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
             labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
         ),
     )

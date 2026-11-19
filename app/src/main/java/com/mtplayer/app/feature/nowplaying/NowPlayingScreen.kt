@@ -6,6 +6,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -77,8 +78,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -97,10 +99,14 @@ import com.mtplayer.app.data.repo.Lyrics
 import com.mtplayer.app.designsystem.components.ActionSheet
 import com.mtplayer.app.designsystem.components.Artwork
 import com.mtplayer.app.designsystem.components.ChoiceSheet
+import com.mtplayer.app.designsystem.components.HeaderAction
 import com.mtplayer.app.designsystem.components.LocalMessenger
 import com.mtplayer.app.designsystem.components.MessageState
+import com.mtplayer.app.designsystem.components.Overline
 import com.mtplayer.app.designsystem.components.SheetAction
+import com.mtplayer.app.designsystem.components.pressScale
 import com.mtplayer.app.designsystem.theme.MtColors
+import com.mtplayer.app.designsystem.theme.MtType
 import com.mtplayer.app.feature.common.rememberIndex
 import com.mtplayer.app.feature.shell.LocalAppViewModel
 import com.mtplayer.app.feature.shell.LocalContainer
@@ -221,13 +227,20 @@ private sealed interface LyricsLoad {
 
 @Composable
 private fun TopRow(onClose: () -> Unit, onMenu: () -> Unit, sourceLabel: String) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = onClose) { Icon(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.close)) }
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        HeaderAction(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.close), onClose)
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(stringResource(R.string.now_playing), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (sourceLabel.isNotBlank()) Text(sourceLabel, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Overline(stringResource(R.string.now_playing))
+            if (sourceLabel.isNotBlank()) Text(
+                sourceLabel, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
         }
-        IconButton(onClick = onMenu) { Icon(Icons.Rounded.MoreVert, stringResource(R.string.more_options)) }
+        HeaderAction(Icons.Rounded.MoreVert, stringResource(R.string.more_options), onMenu)
     }
 }
 
@@ -301,7 +314,7 @@ private fun Details(
 
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            Text(current.title, style = MaterialTheme.typography.headlineSmall, color = scheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(current.title, style = MtType.HeroTitle, color = scheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(current.artist, style = MaterialTheme.typography.titleMedium, color = scheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         if (song != null) {
@@ -326,9 +339,12 @@ private fun Details(
         IconButton(onClick = player::previous, modifier = Modifier.size(56.dp)) {
             Icon(Icons.Rounded.SkipPrevious, stringResource(R.string.previous), Modifier.size(36.dp), tint = scheme.onSurface)
         }
+        val playInteraction = remember { MutableInteractionSource() }
+        val playScale = pressScale(playInteraction, 0.92f)
         FilledIconButton(
             onClick = player::togglePlay,
-            modifier = Modifier.size(76.dp),
+            modifier = Modifier.size(76.dp).graphicsLayer { scaleX = playScale; scaleY = playScale },
+            interactionSource = playInteraction,
             shape = CircleShape,
             colors = IconButtonDefaults.filledIconButtonColors(containerColor = scheme.primary, contentColor = scheme.onPrimary),
         ) {

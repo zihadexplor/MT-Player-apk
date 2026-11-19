@@ -46,8 +46,8 @@ import com.mtplayer.app.designsystem.components.Artwork
 import com.mtplayer.app.designsystem.components.LocalMessenger
 import com.mtplayer.app.playback.PlayerConnection
 import com.mtplayer.app.playback.PlayerUiState
-import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlinx.coroutines.launch
 
 /**
  * Persistent mini player. Tap opens Now Playing; the close button (or a horizontal swipe)

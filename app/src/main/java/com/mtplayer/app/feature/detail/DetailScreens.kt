@@ -25,8 +25,6 @@ import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.RemoveCircleOutline
 import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material.icons.rounded.VisibilityOff
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -45,18 +43,19 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mtplayer.app.R
-import com.mtplayer.app.designsystem.components.HeaderAction
 import com.mtplayer.app.core.Format
 import com.mtplayer.app.data.db.MediaType
 import com.mtplayer.app.data.media.Song
 import com.mtplayer.app.designsystem.components.ActionSheet
 import com.mtplayer.app.designsystem.components.Artwork
 import com.mtplayer.app.designsystem.components.ConfirmDialog
+import com.mtplayer.app.designsystem.components.HeaderAction
 import com.mtplayer.app.designsystem.components.LocalMessenger
 import com.mtplayer.app.designsystem.components.MessageState
 import com.mtplayer.app.designsystem.components.SectionHeader
 import com.mtplayer.app.designsystem.components.SheetAction
 import com.mtplayer.app.designsystem.components.TileCard
+import com.mtplayer.app.designsystem.theme.MtType
 import com.mtplayer.app.feature.common.DetailBar
 import com.mtplayer.app.feature.common.PlayShuffleRow
 import com.mtplayer.app.feature.common.favoriteSongIds
@@ -85,7 +84,7 @@ private fun CollectionHeader(artwork: Any?, title: String, lines: List<String>, 
         Artwork(artwork, null, Modifier.size(128.dp), shape = MaterialTheme.shapes.large, fallbackIcon = icon, iconSize = 48.dp, sizePx = 384)
         Spacer(Modifier.width(18.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurface, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            Text(title, style = MtType.HeroTitle, color = MaterialTheme.colorScheme.onSurface, maxLines = 3, overflow = TextOverflow.Ellipsis)
             lines.filter { it.isNotBlank() }.forEach {
                 Spacer(Modifier.height(2.dp))
                 Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)

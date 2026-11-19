@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -264,3 +265,62 @@ fun SquareCard(
         Text(subtitle, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
+
+/**
+ * Scrollable pill tabs (replaces the underlined Material tab row). The selected pill uses the accent fill;
+ * every pill keeps a 48dp touch target while drawing a 36dp capsule.
+ */
+@Composable
+fun PillTabs(
+    labels: List<String>,
+    selected: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val state = androidx.compose.foundation.lazy.rememberLazyListState()
+    androidx.compose.runtime.LaunchedEffect(selected) {
+        if (selected >= 0) state.animateScrollToItem((selected - 1).coerceAtLeast(0))
+    }
+    androidx.compose.foundation.lazy.LazyRow(
+        modifier = modifier.fillMaxWidth(),
+        state = state,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+    ) {
+        items(labels.size) { i ->
+            val isSelected = i == selected
+            val interaction = remember { MutableInteractionSource() }
+            val focused by interaction.collectIsFocusedAsState()
+            val scale = pressScale(interaction, 0.94f)
+            val fill by androidx.compose.animation.animateColorAsState(if (isSelected) scheme.primary else tileFill(), label = "pill")
+            Box(
+                Modifier
+                    .heightIn(min = 48.dp)
+                    .graphicsLayer { scaleX = scale; scaleY = scale }
+                    .androidxSelectable(isSelected, interaction) { onSelect(i) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    Modifier
+                        .height(36.dp)
+                        .clip(CircleShape)
+                        .background(fill)
+                        .then(if (focused) Modifier.border(2.dp, scheme.onSurface, CircleShape) else if (!isSelected) Modifier.border(1.dp, hairline(), CircleShape) else Modifier)
+                        .padding(horizontal = 16.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        labels[i],
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (isSelected) scheme.onPrimary else scheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun Modifier.androidxSelectable(selected: Boolean, interaction: MutableInteractionSource, onClick: () -> Unit): Modifier =
+    selectable(selected = selected, interactionSource = interaction, indication = null, role = Role.Tab, onClick = onClick)
