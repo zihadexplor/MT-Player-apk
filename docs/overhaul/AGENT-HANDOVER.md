@@ -26,6 +26,14 @@ overhaul. Update the "Progress" and "Next steps" sections after every push.
    do not merge. Wait for explicit approval.
 4. Version bump (e.g. 2.1.0 / code 8) is intentionally not done; ask the owner in the proposal.
 
+## CI lessons (root causes, keep)
+
+- Clickable Compose cards merge their texts into the card node: match with
+  `hasTestTag(..) and hasText(.., substring = true)`, not `hasAnyDescendant(hasText(..))`.
+- Android 15 "audio focus hardening" denies focus to a backgrounded app. If an AppUiTest fails and
+  closes its activity, the next `PlaybackSessionTest` can fail with "player did not start"; fix the
+  first failure, do not touch playback code for that symptom.
+
 ## Logo notes (P6)
 
 - Mark: a play triangle cut into three rising "sound steps" (video and music in one glyph),

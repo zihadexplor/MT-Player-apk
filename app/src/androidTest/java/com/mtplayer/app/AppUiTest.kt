@@ -11,7 +11,6 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
-import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performScrollTo
@@ -176,7 +175,8 @@ class AppUiTest {
         if (TestSupport.mediaStoreHas(TONE_ONE, video = false)) {
             // b_ played the CI tones, so the music card names one of them.
             rule.waitUntil(10_000) {
-                rule.onAllNodes(hasTestTag("home_continue_music") and (hasAnyDescendant(hasText(TONE_ONE)) or hasAnyDescendant(hasText(TONE_TWO))))
+                // The card is clickable, so its texts are merged into the card node itself.
+                rule.onAllNodes(hasTestTag("home_continue_music") and (hasText(TONE_ONE, substring = true) or hasText(TONE_TWO, substring = true)))
                     .fetchSemanticsNodes().isNotEmpty()
             }
         }
