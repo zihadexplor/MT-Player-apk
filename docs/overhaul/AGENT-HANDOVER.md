@@ -39,8 +39,10 @@ Owner reported 4 bugs. Root causes and fixes (do not regress):
    `e_settingsToHomeAndNowPlayingBlocksTouches`.
 
 Status: commits 2 on `fix/player-nav-logo`; CI run 44541588552 all 5 jobs green (API 29/34/35 +
-update over v1.3.0). PR proposal presented; waiting for owner approval. Rules: no PR/merge until
-the owner approves. On merge the Release workflow patch-bumps to v2.1.1 (fix: commits).
+update over v1.3.0). Owner approved: PR #7 merged (e744404); v2.1.1 released
+(https://github.com/zihadexplor/MT-Player-apk/releases/tag/v2.1.1). First release run failed on a
+transient Robolectric android-all download (FileNotFoundException from Maven); nothing was
+published, and a plain re-run succeeded. If it recurs, re-run before changing code.
 
 ## Next steps (exact)
 
