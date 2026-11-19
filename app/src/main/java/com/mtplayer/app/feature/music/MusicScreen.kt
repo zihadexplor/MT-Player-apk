@@ -39,6 +39,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mtplayer.app.R
+import com.mtplayer.app.designsystem.components.HeaderAction
 import com.mtplayer.app.data.media.LibraryIndex
 import com.mtplayer.app.data.media.SongSort
 import com.mtplayer.app.data.media.sortedBy
@@ -78,10 +79,10 @@ fun MusicScreen() {
     var newPlaylist by rememberSaveable { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize()) {
-        TopLevelBar(stringResource(R.string.tab_music)) {
+        TopLevelBar(stringResource(R.string.tab_music), overline = stringResource(R.string.overline_music)) {
             when (tabs[pager.currentPage]) {
-                MusicTab.SONGS -> IconButton(onClick = { sortOpen = true }) { Icon(Icons.AutoMirrored.Rounded.Sort, stringResource(R.string.sort)) }
-                MusicTab.PLAYLISTS -> IconButton(onClick = { newPlaylist = true }) { Icon(Icons.Rounded.Add, stringResource(R.string.new_playlist)) }
+                MusicTab.SONGS -> HeaderAction(Icons.AutoMirrored.Rounded.Sort, stringResource(R.string.sort), onClick = { sortOpen = true })
+                MusicTab.PLAYLISTS -> HeaderAction(Icons.Rounded.Add, stringResource(R.string.new_playlist), onClick = { newPlaylist = true })
                 else -> {}
             }
         }

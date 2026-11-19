@@ -39,6 +39,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mtplayer.app.R
+import com.mtplayer.app.designsystem.components.HeaderAction
 import com.mtplayer.app.data.media.Video
 import com.mtplayer.app.data.media.VideoSort
 import com.mtplayer.app.data.media.sortedBy
@@ -70,13 +71,14 @@ fun VideosScreen() {
     val videos = remember(index, settings.videoSort) { index.videos.sortedBy(settings.videoSort) }
 
     Column(Modifier.fillMaxSize()) {
-        TopLevelBar(stringResource(R.string.tab_videos)) {
-            IconButton(onClick = { sortOpen = true }) { Icon(Icons.AutoMirrored.Rounded.Sort, stringResource(R.string.sort)) }
+        TopLevelBar(stringResource(R.string.tab_videos), overline = stringResource(R.string.overline_videos)) {
+            HeaderAction(Icons.AutoMirrored.Rounded.Sort, stringResource(R.string.sort), onClick = { sortOpen = true })
             val grid = settings.videoLayout == VideoLayout.GRID
-            IconButton(onClick = { vm.updateSettings { it.copy(videoLayout = if (grid) VideoLayout.LIST else VideoLayout.GRID) } }) {
-                Icon(if (grid) Icons.AutoMirrored.Rounded.ViewList else Icons.Rounded.GridView,
-                    stringResource(if (grid) R.string.show_as_list else R.string.show_as_grid))
-            }
+            HeaderAction(
+                if (grid) Icons.AutoMirrored.Rounded.ViewList else Icons.Rounded.GridView,
+                stringResource(if (grid) R.string.show_as_list else R.string.show_as_grid),
+                onClick = { vm.updateSettings { it.copy(videoLayout = if (grid) VideoLayout.LIST else VideoLayout.GRID) } },
+            )
         }
         if (index.videos.isEmpty()) {
             MessageState(Icons.Rounded.Movie, stringResource(R.string.no_videos_title), stringResource(R.string.no_videos_body),

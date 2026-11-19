@@ -31,7 +31,6 @@
     <string name="rewind">Rewind</string>
     <string name="forward">Forward</string>
     <string name="shuffle">Shuffle</string>
-    <string name="shuffle_all">Shuffle all</string>
     <string name="play_next">Play next</string>
     <string name="add_to_queue">Add to queue</string>
     <string name="add_to_playlist">Add to playlist</string>
@@ -126,7 +125,6 @@
     <!-- Home / saved -->
     <string name="continue_watching">Continue watching</string>
     <string name="recently_played">Recently played</string>
-    <string name="recently_added">Recently added</string>
     <string name="most_played">Most played</string>
     <string name="watch_history">Watch history</string>
     <string name="saved_fav_songs">Favourite songs</string>
@@ -325,4 +323,33 @@
         <item quantity="one">Added %1$d song to %2$s</item>
         <item quantity="other">Added %1$d songs to %2$s</item>
     </plurals>
+
+    <!-- UI/UX overhaul: top bar, Home feed, About -->
+    <string name="greeting_morning">Good morning</string>
+    <string name="greeting_afternoon">Good afternoon</string>
+    <string name="greeting_evening">Good evening</string>
+    <string name="greeting_night">Good night</string>
+    <string name="overline_home" translatable="false">MT Player</string>
+    <string name="overline_music">Listen</string>
+    <string name="overline_videos">Watch</string>
+    <string name="overline_saved">Your collection</string>
+    <string name="jump_back_in">Jump back in</string>
+    <string name="jump_back_in_overline">Pick up where you left off</string>
+    <string name="continue_music_playing">Music · playing</string>
+    <string name="continue_music_last">Music · last played</string>
+    <string name="continue_video_last">Video · last watched</string>
+    <string name="continue_nothing_yet">Nothing yet</string>
+    <string name="continue_music_empty">Play a song to see it here</string>
+    <string name="continue_video_empty">Watch a video to see it here</string>
+    <string name="open_music">Open music</string>
+    <string name="open_videos">Open videos</string>
+    <string name="resume">Resume</string>
+    <string name="keep_watching">Keep watching</string>
+    <string name="your_playlists">Your playlists</string>
+    <string name="new_on_device">New on this device</string>
+    <string name="overline_history">From your history</string>
+    <string name="overline_favorites">On repeat</string>
+    <string name="overline_fresh">Freshly added</string>
+    <string name="overline_library">Your library</string>
+    <string name="about_credit" translatable="false">Made with love by Tawfik Estiak Zihad</string>
 </resources>

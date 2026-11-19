@@ -45,6 +45,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mtplayer.app.R
+import com.mtplayer.app.designsystem.components.HeaderAction
 import com.mtplayer.app.core.Format
 import com.mtplayer.app.data.db.MediaType
 import com.mtplayer.app.data.media.Song
@@ -98,7 +99,7 @@ private fun SongCollectionScreen(
     title: String,
     songs: List<Song>,
     header: @Composable () -> Unit,
-    barActions: @Composable () -> Unit = {},
+    barActions: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {},
     subtitle: ((Song) -> String)? = null,
     extra: (androidx.compose.foundation.lazy.LazyListScope.() -> Unit)? = null,
 ) {
@@ -190,11 +191,11 @@ fun FolderScreen(path: String) {
         title = folder.name,
         songs = folder.songs,
         barActions = {
-            IconButton(onClick = {
+            HeaderAction(Icons.Rounded.VisibilityOff, stringResource(R.string.hide_folder), onClick = {
                 vm.hideFolder(folder.path, MediaType.SONG)
                 messenger.show(hidden, undo) { vm.unhideFolder(folder.path, MediaType.SONG) }
                 nav.back()
-            }) { Icon(Icons.Rounded.VisibilityOff, stringResource(R.string.hide_folder)) }
+            })
         },
         header = {
             CollectionHeader(null, folder.name, listOf(folder.path, pluralStringResource(R.plurals.song_count, folder.songs.size, folder.songs.size)), Icons.Rounded.Folder)
@@ -244,7 +245,7 @@ fun PlaylistScreen(id: Long) {
 
     Column(Modifier.fillMaxSize()) {
         DetailBar(p.name) {
-            IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, stringResource(R.string.more_options_for, p.name)) }
+            HeaderAction(Icons.Rounded.MoreVert, stringResource(R.string.more_options_for, p.name), onClick = { menu = true })
         }
         if (songs.isEmpty()) {
             MessageState(Icons.AutoMirrored.Rounded.QueueMusic, stringResource(R.string.empty_playlist_title),

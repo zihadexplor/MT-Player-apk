@@ -1,5 +1,11 @@
 package com.mtplayer.app.feature.shell
 
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.ui.Alignment
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.expandVertically
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
@@ -127,7 +133,7 @@ fun AppRoot(container: AppContainer, vm: AppViewModel, openPlayerRequest: Int) {
         val showBar = !fullScreen
         Row(Modifier.fillMaxSize()) {
             if (wide && showBar) {
-                NavigationRail(containerColor = MaterialTheme.colorScheme.surfaceContainerLow) {
+                NavigationRail(containerColor = MaterialTheme.colorScheme.surfaceContainerLow, header = { Spacer(Modifier.height(8.dp)) }) {
                     destinations.forEach { d ->
                         val selected = backStack?.destination?.route == d.route
                         NavigationRailItem(
@@ -136,8 +142,8 @@ fun AppRoot(container: AppContainer, vm: AppViewModel, openPlayerRequest: Int) {
                             icon = { Icon(d.icon, contentDescription = null) },
                             label = { Text(stringResource(d.label)) },
                             colors = NavigationRailItemDefaults.colors(
-                                selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                                indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
+                                selectedIconColor = MaterialTheme.colorScheme.primary,
+                                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
                                 selectedTextColor = MaterialTheme.colorScheme.onSurface,
                                 unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                 unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -153,35 +159,26 @@ fun AppRoot(container: AppContainer, vm: AppViewModel, openPlayerRequest: Int) {
                 snackbarHost = { MtSnackbarHost(snackbar) },
                 bottomBar = {
                     if (showBar) {
-                        Column {
+                        val miniPlayer: @Composable (Boolean) -> Unit = { docked ->
                             AnimatedVisibility(
                                 visible = playerState.hasMedia,
-                                enter = slideInVertically { it } + fadeIn(),
-                                exit = slideOutVertically { it } + fadeOut(),
+                                enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
+                                exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
                             ) {
-                                MiniPlayer(playerState, container.player, onOpen = navigator::player,
-                                    modifier = if (wide) Modifier.navigationBarsPadding() else Modifier)
+                                MiniPlayer(playerState, container.player, onOpen = navigator::player, docked = docked,
+                                    modifier = if (docked) Modifier else Modifier.navigationBarsPadding())
                             }
-                            if (!wide) {
-                                NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainerLow) {
-                                    destinations.forEach { d ->
-                                        val selected = backStack?.destination?.route == d.route
-                                        NavigationBarItem(
-                                            selected = selected,
-                                            onClick = { navigator.top(d.route) },
-                                            icon = { Icon(d.icon, contentDescription = null) },
-                                            label = { Text(stringResource(d.label)) },
-                                            colors = NavigationBarItemDefaults.colors(
-                                                selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                                                indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
-                                                selectedTextColor = MaterialTheme.colorScheme.onSurface,
-                                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            ),
-                                        )
-                                    }
-                                }
-                            }
+                        }
+                        if (wide) {
+                            miniPlayer(false)
+                        } else {
+                            Dock(
+                                items = destinations.map { DockItem(it.route, stringResource(it.label), it.icon) },
+                                selectedRoute = backStack?.destination?.route,
+                                onSelect = navigator::top,
+                                modifier = Modifier.navigationBarsPadding(),
+                                top = { miniPlayer(true) },
+                            )
                         }
                     }
                 },

@@ -1,5 +1,8 @@
 package com.mtplayer.app.feature.settings
 
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.platform.testTag
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
@@ -124,6 +127,14 @@ fun SettingsScreen() {
             Choice(stringResource(R.string.crash_reports), if (crashCount == 0) stringResource(R.string.crash_none) else stringResource(R.string.crash_some, crashCount),
                 onClick = if (crashCount > 0) ({ showCrash = true }) else null)
             Choice(stringResource(R.string.privacy), stringResource(R.string.privacy_desc), onClick = null)
+            Text(
+                stringResource(R.string.about_credit),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 20.dp)
+                    .testTag("about_credit"),
+            )
         }
     }
 
@@ -187,11 +198,10 @@ private fun updateSummary(state: UpdateState): String = when (state) {
 
 @Composable
 private fun Group(title: String) {
-    Text(
+    com.mtplayer.app.designsystem.components.Overline(
         title,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 4.dp),
+        modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 6.dp)
+            .semantics { heading() },
     )
 }
 

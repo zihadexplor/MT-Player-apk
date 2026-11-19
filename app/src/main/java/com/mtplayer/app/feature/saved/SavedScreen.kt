@@ -30,6 +30,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mtplayer.app.R
+import com.mtplayer.app.designsystem.components.HeaderAction
 import com.mtplayer.app.data.media.Song
 import com.mtplayer.app.data.prefs.VideoLayout
 import com.mtplayer.app.designsystem.components.ConfirmDialog
@@ -66,9 +67,9 @@ fun SavedScreen() {
     val cleared = stringResource(R.string.history_cleared)
 
     Column(Modifier.fillMaxSize()) {
-        TopLevelBar(stringResource(R.string.tab_saved)) {
+        TopLevelBar(stringResource(R.string.tab_saved), overline = stringResource(R.string.overline_saved)) {
             if (tab in setOf(SavedTab.RECENT, SavedTab.MOST, SavedTab.WATCHED)) {
-                IconButton(onClick = { confirmClear = true }) { Icon(Icons.Rounded.DeleteSweep, stringResource(R.string.clear_history)) }
+                HeaderAction(Icons.Rounded.DeleteSweep, stringResource(R.string.clear_history), onClick = { confirmClear = true })
             }
         }
         LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
